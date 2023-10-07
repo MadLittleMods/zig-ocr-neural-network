@@ -8,17 +8,22 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
         const Self = @This();
 
         activation_function: ActivationFunction,
-        //layers: [layer_sizes.len]Layer;
+        layers: []Layer,
 
         pub fn init(activation_function: ActivationFunction, allocator: std.mem.Allocator) Self {
-            var layer1 = try Layer(784, 100).init(allocator);
-            _ = layer1;
-            var layer2 = try Layer(100, 10).init(allocator);
-            _ = layer2;
+            var layers = try allocator.alloc(Layer, layer_sizes.len - 1);
+            for (layers, 0..) |*layer, layer_index| {
+                layer.* = try Layer.init(
+                    layer_sizes[layer_index],
+                    layer_sizes[layer_index + 1],
+                    activation_function,
+                    allocator,
+                );
+            }
 
             return Self{
                 .activation_function = activation_function,
-                //.layers = [_]Layer{layer1, layer2},
+                .layers = layers,
             };
         }
 
@@ -46,7 +51,7 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             return max_output_index;
         }
 
-        pub fn cost(self: *Self) f64 {
+        pub fn cost(self: *Self, data_point: DataPoint) f64 {
             _ = self;
             // TODO
             return 0.0;
@@ -59,6 +64,13 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             const original_cost = self.cost(training_data);
 
             // TODO
+        }
+
+        fn UpdateAllGradients(self: *Self, data_point: DataPoint) void {
+
+            // TODO
+            var output_layer = self.layers[self.layers.len - 1];
+            output_layer.CalculateOutputLayerNodeValues(data_point.expected_outputs);
         }
     };
 }

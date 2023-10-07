@@ -86,6 +86,9 @@ pub fn main() !void {
     try std.testing.expectEqual(testing_images_data.header.number_of_columns, 28);
 
     const layer_sizes = [_]u32{ 784, 100, 10 };
-    var neural_network = NeuralNetwork(layer_sizes[0..]).init(neural_networks.ActivationFunction.Relu, allocator);
+    var neural_network = NeuralNetwork(layer_sizes[0..]).init(
+        neural_networks.ActivationFunction.Relu,
+        allocator,
+    );
     _ = neural_network;
 }

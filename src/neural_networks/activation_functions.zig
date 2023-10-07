@@ -27,14 +27,31 @@ pub const Relu = struct {
     }
 };
 
+// Sigmoid
+// TODO: Visualize this (ASCII art)
+// TODO: Why would someone use this one?
+pub const Sigmoid = struct {
+    pub fn activate(input: f64) f64 {
+        return 1.0 / (1.0 + @exp(-input));
+    }
+
+    pub fn derivative(input: f64) f64 {
+        const activation_value = Sigmoid.activate(input);
+        return activation_value * (1.0 - activation_value);
+    }
+};
+
 pub const ActivationFunction = union(enum) {
     Relu: Relu,
+    Sigmoid: Sigmoid,
 
     pub fn activate(self: @This(), input: f64) f64 {
         return switch (self) {
             inline else => |case| case.activate(input),
         };
     }
+
+    /// A derivative is just the slope of the activation function at a given point.
     pub fn derivative(self: @This(), input: f64) f64 {
         return switch (self) {
             inline else => |case| case.derivative(input),
