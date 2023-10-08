@@ -115,7 +115,7 @@ $`\begin{aligned}
 \\&= a_0 &\times& \verb|activation_function.derivative|(z_1) &\times& w_2 &\times& \verb|activation_function.derivative|(z_2)  &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
 \end{aligned}`$
 
-The partial derivative of cost with respect to bias of the 2nd node.
+The partial derivative of cost with respect to bias of the 2nd node. (this applies to both hidden and output layers)
 $`\begin{aligned}
 \frac{\partial c}{\partial b_2} &= \frac{\partial z_2}{\partial b_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= 1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})

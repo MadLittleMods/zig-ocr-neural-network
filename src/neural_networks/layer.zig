@@ -1,5 +1,6 @@
 const std = @import("std");
 const ActivationFunction = @import("activation_functions.zig").ActivationFunction;
+const CostFunction = @import("activation_functions.zig").CostFunction;
 
 pub const Layer = struct {
     const Self = @This();
@@ -17,14 +18,12 @@ pub const Layer = struct {
     costGradientBiases: []f64,
 
     activation_function: ActivationFunction,
+    cost_function: ?CostFunction = null,
 
     /// Create the layer
-    pub fn init(
-        num_input_nodes: usize,
-        num_output_nodes: usize,
-        activation_function: ActivationFunction,
-        allocator: std.mem.Allocator,
-    ) !Self {
+    pub fn init(num_input_nodes: usize, num_output_nodes: usize, activation_function: ActivationFunction, allocator: std.mem.Allocator, options: struct {
+        cost_function: ?CostFunction = null,
+    }) !Self {
         // Initialize the weights
         var weights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
         var biases: []f64 = try allocator.alloc(f64, num_output_nodes);
@@ -41,6 +40,7 @@ pub const Layer = struct {
             .costGradientWeights = costGradientWeights,
             .costGradientBiases = costGradientBiases,
             .activation_function = activation_function,
+            .cost_function = options.cost_function,
         };
     }
 
@@ -121,7 +121,7 @@ pub const Layer = struct {
         return outputs;
     }
 
-    /// Calculate the "shareable_node_derivatives" for this hidden layer
+    /// Calculate the "shareable_node_derivatives" for this output layer
     /// TODO: Explain "shareable_node_derivatives"
     pub fn calculateOutputLayerShareableNodeDerivatives(self: *Self, expected_outputs: []f64) []f64 {
         if (expected_outputs.len != self.num_output_nodes) {
@@ -133,9 +133,9 @@ pub const Layer = struct {
             return error.ExpectedOutputCountMismatch;
         }
 
-        // These comments are made from the perspective of layer 2 in our ridicously
-        // simple simple neural network that has just 3 nodes connected by 2 weights
-        // (see dev-notes.md for more details).
+        // The following comments are made from the perspective of layer 2 in our
+        // ridicously simple simple neural network that has just 3 nodes connected by 2
+        // weights (see dev-notes.md for more details).
         var shareable_node_derivatives: []f64 = try std.heap.alloc(f64, self.num_output_nodes);
 
         for (0..self.num_output_nodes) |node_index| {
@@ -151,12 +151,12 @@ pub const Layer = struct {
         return shareable_node_derivatives;
     }
 
-    /// Calculate the "shareable_node_derivatives" for this hidden layer (from the perspective of layer 1)
+    /// Calculate the "shareable_node_derivatives" for this hidden layer
     /// TODO: Explain "shareable_node_derivatives"
     pub fn calculateHiddenLayerShareableNodeDerivatives(self: *Self, next_layer: Self, next_layer_shareable_node_derivatives: []f64) []f64 {
-        // These comments are made from the perspective of layer 1 in our ridicously
-        // simple simple neural network that has just 3 nodes connected by 2 weights
-        // (see dev-notes.md for more details).
+        // The following comments are made from the perspective of layer 1 in our
+        // ridicously simple simple neural network that has just 3 nodes connected by 2
+        // weights (see dev-notes.md for more details).
         var shareable_node_derivatives: []f64 = try std.heap.alloc(f64, self.num_output_nodes);
         for (0..self.num_output_nodes) |node_index| {
             var shareable_node_derivative: f64 = 0.0;
