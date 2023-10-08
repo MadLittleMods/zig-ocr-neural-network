@@ -3,6 +3,10 @@
 A from scratch neural network implementation in Zig, trained against the MNIST dataset
 to recognize handwritten digits.
 
+A lot of the phrasing and concepts are taken from the resources linked in the
+[*developer notes*](./dev-notes.md). I'm just trying to piece together all of those
+resources into something that works and is understandable to me as I learn.
+
 ## Setup
 
 Download and extract the MNIST dataset from http://yann.lecun.com/exdb/mnist/ to a
