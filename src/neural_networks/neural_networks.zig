@@ -86,24 +86,30 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             // Gradient descent step: update all weights and biases in the network
             for (self.layers) |layer| {
                 layer.applyCostGradients(
-                // Because we summed the gradients from all of the training data points,
-                // we need to average out all of gradients that we added together. Since
-                // we end up multiplying the gradient values by the learnRate, we can
-                // just divide it by the number of training data points to get the
-                // average gradient.
-                learn_rate / training_data_batch.len);
+                    // Because we summed the gradients from all of the training data points,
+                    // we need to average out all of gradients that we added together. Since
+                    // we end up multiplying the gradient values by the learnRate, we can
+                    // just divide it by the number of training data points to get the
+                    // average gradient.
+                    learn_rate / training_data_batch.len,
+                );
             }
         }
 
-        /// Backpropagation
         fn updateGradients(self: *Self, data_point: DataPoint) void {
+            // TODO: Feed data through the network to calculate outputs. Save all
+            // inputs/weightedinputs/activations along the way to use for
+            // backpropagation.
+
+            // ---- Backpropagation ----
             // Update gradients of the output layer
-            var output_layer = self.layers[self.layers.len - 1];
+            const output_layer_index = self.layers.len - 1;
+            var output_layer = self.layers[output_layer_index];
             var node_values = output_layer.calculateOutputLayerNodeValues(data_point.expected_outputs);
             output_layer.updateCostGradients(node_values);
 
             // Loop backwards through all of the hidden layers and update their gradients
-            var hidden_layer_index = self.layers.len - 2;
+            var hidden_layer_index = output_layer_index - 1;
             while (hidden_layer_index >= 0) : (hidden_layer_index -= 1) {
                 var hidden_layer = self.layers[hidden_layer_index];
                 node_values = hidden_layer.calculateHiddenLayerNodeValues(self.layers[hidden_layer_index + 1], node_values);
