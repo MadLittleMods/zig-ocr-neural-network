@@ -33,7 +33,8 @@ Tested with Zig 0.11.0
 
 ```sh
 $ zig build run
-
+...
+```
 
 ## Dev notes
 
