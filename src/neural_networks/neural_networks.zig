@@ -105,15 +105,15 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             // Update gradients of the output layer
             const output_layer_index = self.layers.len - 1;
             var output_layer = self.layers[output_layer_index];
-            var node_values = output_layer.calculateOutputLayerNodeValues(data_point.expected_outputs);
-            output_layer.updateCostGradients(node_values);
+            var shareable_node_derivatives = output_layer.calculateOutputLayerShareableNodeDerivatives(data_point.expected_outputs);
+            output_layer.updateCostGradients(shareable_node_derivatives);
 
             // Loop backwards through all of the hidden layers and update their gradients
             var hidden_layer_index = output_layer_index - 1;
             while (hidden_layer_index >= 0) : (hidden_layer_index -= 1) {
                 var hidden_layer = self.layers[hidden_layer_index];
-                node_values = hidden_layer.calculateHiddenLayerNodeValues(self.layers[hidden_layer_index + 1], node_values);
-                hidden_layer.updateCostGradients(node_values);
+                shareable_node_derivatives = hidden_layer.calculateHiddenLayerShareableNodeDerivatives(self.layers[hidden_layer_index + 1], shareable_node_derivatives);
+                hidden_layer.updateCostGradients(shareable_node_derivatives);
             }
         }
     };

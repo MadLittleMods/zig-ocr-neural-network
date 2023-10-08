@@ -121,11 +121,11 @@ pub const Layer = struct {
         return outputs;
     }
 
-    /// Calculate the "node_values" for this hidden layer
-    /// TODO: Explain "node_values"
-    pub fn calculateOutputLayerNodeValues(self: *Self, expected_outputs: []f64) []f64 {
+    /// Calculate the "shareable_node_derivatives" for this hidden layer
+    /// TODO: Explain "shareable_node_derivatives"
+    pub fn calculateOutputLayerShareableNodeDerivatives(self: *Self, expected_outputs: []f64) []f64 {
         if (expected_outputs.len != self.num_output_nodes) {
-            std.log.err("calculateOutputLayerNodeValues() was called with {d} expected_outputs but we expect it to match the same num_output_nodes={d}", .{
+            std.log.err("calculateOutputLayerShareableNodeDerivatives() was called with {d} expected_outputs but we expect it to match the same num_output_nodes={d}", .{
                 expected_outputs,
                 self.num_output_nodes,
             });
@@ -136,7 +136,7 @@ pub const Layer = struct {
         // These comments are made from the perspective of layer 2 in our ridicously
         // simple simple neural network that has just 3 nodes connected by 2 weights
         // (see dev-notes.md for more details).
-        var node_values: []f64 = try std.heap.alloc(f64, self.num_output_nodes);
+        var shareable_node_derivatives: []f64 = try std.heap.alloc(f64, self.num_output_nodes);
 
         for (0..self.num_output_nodes) |node_index| {
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
@@ -145,50 +145,50 @@ pub const Layer = struct {
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             const cost_derivative = self.cost_function.derivative(activations[node_index], expected_outputs[node_index]);
-            node_values[node_index] = activation_derivative * cost_derivative;
+            shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
         }
 
-        return node_values;
+        return shareable_node_derivatives;
     }
 
-    /// Calculate the "node_values" for this hidden layer (from the perspective of layer 1)
-    /// TODO: Explain "node_values"
-    pub fn calculateHiddenLayerNodeValues(self: *Self, next_layer: Self, next_layer_node_values: []f64) []f64 {
+    /// Calculate the "shareable_node_derivatives" for this hidden layer (from the perspective of layer 1)
+    /// TODO: Explain "shareable_node_derivatives"
+    pub fn calculateHiddenLayerShareableNodeDerivatives(self: *Self, next_layer: Self, next_layer_shareable_node_derivatives: []f64) []f64 {
         // These comments are made from the perspective of layer 1 in our ridicously
         // simple simple neural network that has just 3 nodes connected by 2 weights
         // (see dev-notes.md for more details).
-        var node_values: []f64 = try std.heap.alloc(f64, self.num_output_nodes);
+        var shareable_node_derivatives: []f64 = try std.heap.alloc(f64, self.num_output_nodes);
         for (0..self.num_output_nodes) |node_index| {
-            var node_value: f64 = 0.0;
-            for (next_layer_node_values, 0..) |next_layer_node_value, next_layer_node_index| {
+            var shareable_node_derivative: f64 = 0.0;
+            for (next_layer_shareable_node_derivatives, 0..) |next_layer_shareable_node_derivative, next_layer_node_index| {
                 // Evaluate the partial derivative of the weighted input for this layer with respect to the input of the previous<TODO>
                 // dz_2/da_1 = w_2
                 const derivative_weighted_input_wrt_activation = next_layer.getWeight(
                     next_layer_node_index,
                     node_index,
                 );
-                node_value += derivative_weighted_input_wrt_activation * next_layer_node_value;
+                shareable_node_derivative += derivative_weighted_input_wrt_activation * next_layer_shareable_node_derivative;
             }
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_1/dz_1 = activation_function.derivative(z_1)
-            node_value *= self.activation_function.derivative(weighted_inputs[node_index]);
-            node_values[node_index] = node_value;
+            shareable_node_derivative *= self.activation_function.derivative(weighted_inputs[node_index]);
+            shareable_node_derivatives[node_index] = shareable_node_derivative;
         }
-        return node_values;
+        return shareable_node_derivatives;
     }
 
     pub fn updateCostGradients(
         self: *Self,
-        // "node_values" is just the name given to a set of derivatives calculated for
-        // the type of layer respectively (see `calculateOutputLayerNodeValues(...)` and
-        // `calculateHiddenLayerNodeValues(...)` above). Since those "node_values" are
+        // "shareable_node_derivatives" is just the name given to a set of derivatives calculated for
+        // the type of layer respectively (see `calculateOutputLayerShareableNodeDerivatives(...)` and
+        // `calculateHiddenLayerShareableNodeDerivatives(...)` above). Since those "shareable_node_derivatives" are
         // shared in the equations for calculating the partial derivative of cost with
         // respect to both weight and bias we can re-use that work.
-        node_values: []f64,
+        shareable_node_derivatives: []f64,
     ) !void {
-        if (node_values.len != self.num_output_nodes) {
-            std.log.err("updateGradients() was called with {d} node_values but we expect it to match the same num_output_nodes={d}", .{
-                node_values.len,
+        if (shareable_node_derivatives.len != self.num_output_nodes) {
+            std.log.err("updateGradients() was called with {d} shareable_node_derivatives but we expect it to match the same num_output_nodes={d}", .{
+                shareable_node_derivatives.len,
                 self.num_output_nodes,
             });
 
@@ -200,8 +200,8 @@ pub const Layer = struct {
                 // dz_2/dw_2 = a_1
                 const derivative_weighted_input_wrt_weight = inputs[node_in_index];
                 // Evaluate the partial derivative of cost with respect to the weight of the current connection
-                // dc/dw_2 = dz_2/dw_2 * node_values[node_index]
-                const derivative_cost_wrt_weight = derivative_weighted_input_wrt_weight * node_values[node_index];
+                // dc/dw_2 = dz_2/dw_2 * shareable_node_derivatives[node_index]
+                const derivative_cost_wrt_weight = derivative_weighted_input_wrt_weight * shareable_node_derivatives[node_index];
                 // The costGradientWeights array stores these partial derivatives for each weight.
                 // Note: The derivative is being added to the array here because ultimately we want
                 // to calculuate the average gradient across all the data in the training batch
@@ -213,8 +213,8 @@ pub const Layer = struct {
             const derivative_weighted_input_wrt_bias = 1;
 
             // Evaluate the partial derivative of cost with respect to bias of the current node.
-            // dc/db_2 = dz_2/db_2 * node_values[node_index]
-            const derivative_cost_wrt_bias = derivative_weighted_inputs_wrt_biases * node_values[node_index];
+            // dc/db_2 = dz_2/db_2 * shareable_node_derivatives[node_index]
+            const derivative_cost_wrt_bias = derivative_weighted_inputs_wrt_biases * shareable_node_derivatives[node_index];
             self.costGradientBiases[node_index] += derivative_cost_wrt_bias;
         }
     }

@@ -103,13 +103,13 @@ If we keep these steps proportional to the slope, then when the slope is flatten
 approaching a local minimum, our steps get smaller and smaller which helps us from
 overshooting. This is why our learn rate is some small number.
 
-The partial derivative of cost with respect to the weight of the 2nd connection. (this is the equation used in `calculateOutputLayerNodeValues(...)`)
+The partial derivative of cost with respect to the weight of the 2nd connection. (this is the equation used in `calculateOutputLayerShareableNodeDerivatives(...)`)
 $`\begin{aligned}
 \frac{\partial c}{\partial w_2} &= \frac{\partial z_2}{\partial w_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= a_1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
 \end{aligned}`$
 
-The partial derivative of cost with respect to the weight of the 1st connection. (this is the equation used in `calculateHiddenLayerNodeValues(...)`)
+The partial derivative of cost with respect to the weight of the 1st connection. (this is the equation used in `calculateHiddenLayerShareableNodeDerivatives(...)`)
 $`\begin{aligned}
 \frac{\partial c}{\partial w_1} &= \frac{\partial z_1}{\partial w_1} &\times& \frac{\partial a_1}{\partial z_1} &\times& \frac{\partial z_2}{\partial a_1} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= a_0 &\times& \verb|activation_function.derivative|(z_1) &\times& w_2 &\times& \verb|activation_function.derivative|(z_2)  &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
