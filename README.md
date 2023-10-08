@@ -5,7 +5,8 @@ to recognize handwritten digits.
 
 A lot of the phrasing and concepts are taken from the resources linked in the
 [*developer notes*](./dev-notes.md). I'm just trying to piece together all of those
-resources into something that works and is understandable to me as I learn.
+resources into something that works and is understandable to me as I learn. Major kudos
+to Sebastian Lague, 3Blue1Brown, and Samson Zhang for their excellent resources.
 
 ## Setup
 
