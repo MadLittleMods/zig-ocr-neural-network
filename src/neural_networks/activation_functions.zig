@@ -2,7 +2,7 @@
 // can bend the boundary around the data. Without this, the network would only be able
 // to separate data with a straight line.
 
-// TODO: In the future, we could add Sigmoid, Tanh, SiLU, Softmax, etc to try out
+// TODO: In the future, we could add Sigmoid, Tanh, SiLU, Softmax, LeakyReLU, etc to try out
 
 // ReLU
 // TODO: Visualize this (ASCII art)
@@ -13,8 +13,8 @@ pub const Relu = struct {
 
         // Or in other words:
         //
-        // if (x > 0.0) {
-        //     return x;
+        // if (input > 0.0) {
+        //     return input;
         // }
         // return 0.0;
     }
@@ -31,12 +31,14 @@ pub const Relu = struct {
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
 pub const Sigmoid = struct {
+    const Self = @This();
+
     pub fn activate(input: f64) f64 {
         return 1.0 / (1.0 + @exp(-input));
     }
 
     pub fn derivative(input: f64) f64 {
-        const activation_value = Sigmoid.activate(input);
+        const activation_value = Self.activate(input);
         return activation_value * (1.0 - activation_value);
     }
 };
