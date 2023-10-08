@@ -72,12 +72,12 @@ class groupLabel2 layerGroup
 
 #### Forward propagation:
 
-This just means that we're going to feed the input through each layer in the network to
-the next until we get the output in the final layer.
+Forward propagation just means that we're going to feed the input through each layer in
+the network to the next until we get the output in the final layer.
 
 Some variable explanations:
 
- - $`a0`$: The input to the network. This is often labeled as $`x`$. Labeling the input as an "activation" is a bit strange since it hasn't been through our activation function but it just makes our notation a bit more consistent.
+ - $`a0`$: The input to the network. This is often alternatively labeled as $`x`$. Labeling the input as an "activation" is a bit strange since it hasn't been through our activation function but it just makes our notation a bit more consistent.
  - $`w_1`$, $`w_2`$: The weight of the connection
 
 Equations:
@@ -103,13 +103,13 @@ If we keep these steps proportional to the slope, then when the slope is flatten
 approaching a local minimum, our steps get smaller and smaller which helps us from
 overshooting. This is why our learn rate is some small number.
 
-The partial derivative of cost with respect to the weight of the 2nd connection.
+The partial derivative of cost with respect to the weight of the 2nd connection. (this is the equation used in `calculateOutputLayerNodeValues(...)`)
 $`\begin{aligned}
 \frac{\partial c}{\partial w_2} &= \frac{\partial z_2}{\partial w_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= a_1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
 \end{aligned}`$
 
-The partial derivative of cost with respect to the weight of the 1st connection.
+The partial derivative of cost with respect to the weight of the 1st connection. (this is the equation used in `calculateHiddenLayerNodeValues(...)`)
 $`\begin{aligned}
 \frac{\partial c}{\partial w_1} &= \frac{\partial z_1}{\partial w_1} &\times& \frac{\partial a_1}{\partial z_1} &\times& \frac{\partial z_2}{\partial a_1} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= a_0 &\times& \verb|activation_function.derivative|(z_1) &\times& w_2 &\times& \verb|activation_function.derivative|(z_2)  &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
@@ -120,6 +120,9 @@ $`\begin{aligned}
 \frac{\partial c}{\partial b_2} &= \frac{\partial z_2}{\partial b_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= 1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
 \end{aligned}`$
+
+TODO: Chain rule for how these are derived (chain rule tree reference: https://youtu.be/tIeHLnjs5U8?si=WJwPWW_OOkkUGk_S&t=129)
+
 
 When expanding the network with more nodes per layer, TODO
 
