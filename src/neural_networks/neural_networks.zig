@@ -16,7 +16,7 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             activation_function: ActivationFunction,
             cost_function: CostFunction,
             allocator: std.mem.Allocator,
-        ) Self {
+        ) !Self {
             var layers = try allocator.alloc(Layer, layer_sizes.len - 1);
             for (layers, 0..) |*layer, layer_index| {
                 layer.* = try Layer.init(
@@ -35,7 +35,8 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             if (layers[layers.len - 1].cost_function) |_| {
                 // no-op
             } else {
-                @panic("The cost function for the output layer (the last layer) must be specified");
+                std.log.err("NeuralNetwork.init(...): The cost function for the output layer (the last layer in the neural network) must be specified", .{});
+                return error.CostFunctionNotSpecifiedForOutputLayer;
             }
 
             return Self{

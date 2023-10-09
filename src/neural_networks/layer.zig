@@ -107,8 +107,17 @@ pub const Layer = struct {
     /// The output of a node in this layer is the weighted sum of all
     /// of the incoming connections after they have been passed through the
     /// activation function plus a bias value.
-    pub fn calculateOutputs(self: *Self, inputs: [num_input_nodes]f64, allocator: std.mem.Allocator) [num_output_nodes]f64 {
-        var outputs = try allocator.alloc(f64, num_output_nodes);
+    pub fn calculateOutputs(self: *Self, inputs: []f64, allocator: std.mem.Allocator) []f64 {
+        if (inputs.len != self.num_input_nodes) {
+            std.log.err("calculateOutputs() was called with {d} inputs but we expect it to match the same num_input_nodes={d}", .{
+                inputs.len,
+                self.num_input_nodes,
+            });
+
+            return error.ExpectedOutputCountMismatch;
+        }
+
+        var outputs = try allocator.alloc(f64, self.num_output_nodes);
         // Calculate the weighted inputs for each node in this layer
         for (0..self.num_output_nodes) |node_index| {
             // Calculate the weighted input for this node
@@ -116,6 +125,7 @@ pub const Layer = struct {
             for (self.num_input_nodes) |node_in_index| {
                 weighted_input_sum += inputs[node_in_index] * self.getWeight(node_index, node_in_index);
             }
+            // Then calculate the activation of the node
             outputs[node_index] = self.activation_function.activate(weighted_input_sum + self.biases[node_index]);
         }
         return outputs;
