@@ -108,27 +108,50 @@ pub fn NeuralNetwork(comptime layer_sizes: []const u32) type {
             }
         }
 
-        fn updateCostGradients(self: *Self, data_point: DataPoint) void {
-            // TODO: Feed data through the network to calculate outputs. Save all
+        fn updateCostGradients(
+            self: *Self,
+            data_point: DataPoint,
+            allocator: std.mem.Allocator,
+        ) void {
+            var layer_output_data_list = allocator.alloc(LayerOutputData, self.layers.len);
+
+            // Feed data through the network to calculate outputs. Save all
             // inputs/weighted_inputs/activations along the way to use for
             // backpropagation.
+            var inputsToNextLayer: []f64 = data_point.inputs;
+            for (self.layers, 0..) |*layer, layer_index| {
+                inputsToNextLayer = layer.calculateOutputs(
+                    inputsToNextLayer,
+                    layer_output_data_list[layer_index],
+                );
+            }
 
             // ---- Backpropagation ----
             // Update gradients of the output layer
             const output_layer_index = self.layers.len - 1;
             var output_layer = self.layers[output_layer_index];
-            var shareable_node_derivatives = output_layer.calculateOutputLayerShareableNodeDerivatives(data_point.expected_outputs);
-            output_layer.updateCostGradients(shareable_node_derivatives);
+            var shareable_node_derivatives = output_layer.calculateOutputLayerShareableNodeDerivatives(
+                layer_output_data_list[output_layer_index],
+                data_point.expected_outputs,
+            );
+            output_layer.updateCostGradients(
+                layer_output_data_list[output_layer_index],
+                shareable_node_derivatives,
+            );
 
             // Loop backwards through all of the hidden layers and update their gradients
             var hidden_layer_index = output_layer_index - 1;
             while (hidden_layer_index >= 0) : (hidden_layer_index -= 1) {
                 var hidden_layer = self.layers[hidden_layer_index];
                 shareable_node_derivatives = hidden_layer.calculateHiddenLayerShareableNodeDerivatives(
+                    layer_output_data_list[hidden_layer_index],
                     self.layers[hidden_layer_index + 1],
                     shareable_node_derivatives,
                 );
-                hidden_layer.updateCostGradients(shareable_node_derivatives);
+                hidden_layer.updateCostGradients(
+                    layer_output_data_list[hidden_layer_index],
+                    shareable_node_derivatives,
+                );
             }
         }
     };
