@@ -1,8 +1,7 @@
 const std = @import("std");
 const mnist_data_utils = @import("mnist/mnist_data_utils.zig");
 const neural_networks = @import("neural_networks/neural_networks.zig");
-const NeuralNetwork = neural_networks.NeuralNetwork;
-const DataPoint = neural_networks.DataPoint;
+const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 
 const TRAIN_DATA_FILE_PATH = "data/train-images-idx3-ubyte";
 const TRAIN_LABELS_FILE_PATH = "data/train-labels-idx1-ubyte";
@@ -95,7 +94,7 @@ pub fn main() !void {
 
     // const MnistDataPoint = DataPoint(u8, labels);
 
-    // var neural_network = try NeuralNetwork.init(
+    // var neural_network = try neural_networks.NeuralNetwork.init(
     //     [_]u32{ 784, 100, 10 },
     //     neural_networks.ActivationFunction.Relu,
     //     allocator,
@@ -103,7 +102,7 @@ pub fn main() !void {
     // _ = neural_network;
 
     const animal_labels = [_][]const u8{ "fish", "goat" };
-    const AnimalDataPoint = DataPoint([]const u8, &animal_labels);
+    const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
     // Graph of animal data points:
     // https://www.desmos.com/calculator/x72k0x9ies
     const animal_training_data_points = [_]AnimalDataPoint{
@@ -192,17 +191,23 @@ pub fn main() !void {
     };
     _ = animal_testing_data_points;
 
-    var neural_network = try NeuralNetwork(AnimalDataPoint).init(
+    var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
         &[_]u32{ 2, 3, animal_labels.len },
         neural_networks.ActivationFunction.Relu,
         neural_networks.CostFunction.MeanSquaredError,
         allocator,
     );
-    const epoch_count = 0;
-    while (epoch_count < EPOCHS) : (epoch_count += 1) {
-        neural_network.learn(animal_training_data_points, LEARN_RATE);
+    defer neural_network.deinit(allocator);
 
-        const cost = neural_network.cost(animal_training_data_points);
+    var epoch_count: usize = 0;
+    while (epoch_count < EPOCHS) : (epoch_count += 1) {
+        try neural_network.learn(
+            &animal_training_data_points,
+            LEARN_RATE,
+            allocator,
+        );
+
+        const cost = neural_network.cost(&animal_training_data_points);
         std.log.debug("epoch {d} -> cost {d}", .{ epoch_count, cost });
     }
 }

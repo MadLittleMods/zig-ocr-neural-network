@@ -6,7 +6,7 @@
 pub const MeanSquaredError = struct {
     const Self = @This();
 
-    pub fn many_cost(actual_outputs: []f64, expected_outputs: []f64) f64 {
+    pub fn many_cost(actual_outputs: []const f64, expected_outputs: []const f64) f64 {
         var cost_sum: f64 = 0;
         for (actual_outputs, expected_outputs) |actual_output, expected_output| {
             cost_sum += Self.cost(actual_output, expected_output);
@@ -29,7 +29,7 @@ pub const MeanSquaredError = struct {
 pub const CostFunction = union(enum) {
     MeanSquaredError: MeanSquaredError,
 
-    pub fn many_cost(self: @This(), actual_outputs: []f64, expected_outputs: []f64) f64 {
+    pub fn many_cost(self: @This(), actual_outputs: []const f64, expected_outputs: []const f64) f64 {
         return switch (self) {
             inline else => |case| case.many_cost(actual_outputs, expected_outputs),
         };

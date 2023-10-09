@@ -1,6 +1,6 @@
 const std = @import("std");
 const ActivationFunction = @import("activation_functions.zig").ActivationFunction;
-const CostFunction = @import("activation_functions.zig").CostFunction;
+const CostFunction = @import("cost_functions.zig").CostFunction;
 
 /// Used to keep track of what a layer took in as input and what we outputted last time we /
 //calculated the output of this layer. This is used for backpropagation.
@@ -33,10 +33,18 @@ pub const Layer = struct {
     activation_function: ActivationFunction,
     cost_function: ?CostFunction = null,
 
+    layer_output_data: LayerOutputData,
+
     /// Create the layer
-    pub fn init(num_input_nodes: usize, num_output_nodes: usize, activation_function: ActivationFunction, allocator: std.mem.Allocator, options: struct {
-        cost_function: ?CostFunction = null,
-    }) !Self {
+    pub fn init(
+        num_input_nodes: usize,
+        num_output_nodes: usize,
+        activation_function: ActivationFunction,
+        allocator: std.mem.Allocator,
+        options: struct {
+            cost_function: ?CostFunction = null,
+        },
+    ) !Self {
         // Initialize the weights
         var weights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
         var biases: []f64 = try allocator.alloc(f64, num_output_nodes);
@@ -54,7 +62,19 @@ pub const Layer = struct {
             .costGradientBiases = costGradientBiases,
             .activation_function = activation_function,
             .cost_function = options.cost_function,
+            .layer_output_data = .{
+                .inputs = undefined,
+                .weighted_input_sums = undefined,
+                .outputs = undefined,
+            },
         };
+    }
+
+    pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
+        allocator.free(self.weights);
+        allocator.free(self.biases);
+        allocator.free(self.costGradientWeights);
+        allocator.free(self.costGradientBiases);
     }
 
     fn initializeWeightsAndBiases(
@@ -80,7 +100,7 @@ pub const Layer = struct {
             // the random value by `1 / sqrt(2 / num_input_nodes)`. This modification is
             // suggested when using the ReLU activation function to achieve a "properly
             // scaled uniform distribution for initialization".
-            weight.* = random_value / @sqrt(2 / num_input_nodes);
+            weight.* = random_value / @sqrt(2 / @as(f64, @floatFromInt(num_input_nodes)));
 
             // Note: there are many different ways of trying to chose a good range for
             // the random weights, and these depend on facors such as the activation
@@ -120,7 +140,7 @@ pub const Layer = struct {
     /// The output of a node in this layer is the weighted sum of all
     /// of the incoming connections after they have been passed through the
     /// activation function plus a bias value.
-    pub fn calculateOutputs(self: *Self, inputs: []f64, layer_output_data: *LayerOutputData, allocator: std.mem.Allocator) []f64 {
+    pub fn calculateOutputs(self: *Self, inputs: []const f64, allocator: std.mem.Allocator) ![]f64 {
         if (inputs.len != self.num_input_nodes) {
             std.log.err("calculateOutputs() was called with {d} inputs but we expect it to match the same num_input_nodes={d}", .{
                 inputs.len,
@@ -130,7 +150,7 @@ pub const Layer = struct {
             return error.ExpectedOutputCountMismatch;
         }
 
-        layer_output_data.inputs = inputs;
+        self.layer_output_data.inputs = inputs;
 
         var outputs = try allocator.alloc(f64, self.num_output_nodes);
         // Calculate the weighted inputs for each node in this layer
@@ -140,13 +160,13 @@ pub const Layer = struct {
             for (self.num_input_nodes) |node_in_index| {
                 weighted_input_sum += inputs[node_in_index] * self.getWeight(node_index, node_in_index);
             }
-            layer_output_data.weighted_input_sums[node_index] = weighted_input_sum;
+            self.layer_output_data.weighted_input_sums[node_index] = weighted_input_sum;
 
             // Then calculate the activation of the node
             outputs[node_index] = self.activation_function.activate(weighted_input_sum);
         }
 
-        layer_output_data.outputs = outputs;
+        self.layer_output_data.outputs = outputs;
 
         return outputs;
     }
@@ -155,9 +175,8 @@ pub const Layer = struct {
     /// TODO: Explain "shareable_node_derivatives"
     pub fn calculateOutputLayerShareableNodeDerivatives(
         self: *Self,
-        layer_output_data: *LayerOutputData,
-        expected_outputs: []f64,
-    ) []f64 {
+        expected_outputs: []const f64,
+    ) ![]f64 {
         if (expected_outputs.len != self.num_output_nodes) {
             std.log.err("calculateOutputLayerShareableNodeDerivatives() was called with {d} expected_outputs but we expect it to match the same num_output_nodes={d}", .{
                 expected_outputs,
@@ -175,11 +194,11 @@ pub const Layer = struct {
         for (0..self.num_output_nodes) |node_index| {
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_2/dz_2 = activation_function.derivative(z_2)
-            const activation_derivative = self.activation_function.derivative(layer_output_data.weighted_input_sums[node_index]);
+            const activation_derivative = self.activation_function.derivative(self.layer_output_data.weighted_input_sums[node_index]);
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
-                const cost_derivative = cost_function.derivative(layer_output_data.outputs[node_index], expected_outputs[node_index]);
+                const cost_derivative = cost_function.derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
                 shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
             } else {
                 @panic(
@@ -197,9 +216,8 @@ pub const Layer = struct {
     /// TODO: Explain "shareable_node_derivatives"
     pub fn calculateHiddenLayerShareableNodeDerivatives(
         self: *Self,
-        layer_output_data: *LayerOutputData,
         next_layer: Self,
-        next_layer_shareable_node_derivatives: []f64,
+        next_layer_shareable_node_derivatives: []const f64,
     ) []f64 {
         // The following comments are made from the perspective of layer 1 in our
         // ridicously simple simple neural network that has just 3 nodes connected by 2
@@ -218,7 +236,7 @@ pub const Layer = struct {
             }
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_1/dz_1 = activation_function.derivative(z_1)
-            shareable_node_derivative *= self.activation_function.derivative(layer_output_data.weighted_input_sums[node_index]);
+            shareable_node_derivative *= self.activation_function.derivative(self.layer_output_data.weighted_input_sums[node_index]);
             shareable_node_derivatives[node_index] = shareable_node_derivative;
         }
         return shareable_node_derivatives;
@@ -226,13 +244,12 @@ pub const Layer = struct {
 
     pub fn updateCostGradients(
         self: *Self,
-        layer_output_data: *LayerOutputData,
         // "shareable_node_derivatives" is just the name given to a set of derivatives calculated for
         // the type of layer respectively (see `calculateOutputLayerShareableNodeDerivatives(...)` and
         // `calculateHiddenLayerShareableNodeDerivatives(...)` above). Since those "shareable_node_derivatives" are
         // shared in the equations for calculating the partial derivative of cost with
         // respect to both weight and bias we can re-use that work.
-        shareable_node_derivatives: []f64,
+        shareable_node_derivatives: []const f64,
     ) !void {
         if (shareable_node_derivatives.len != self.num_output_nodes) {
             std.log.err("updateGradients() was called with {d} shareable_node_derivatives but we expect it to match the same num_output_nodes={d}", .{
@@ -246,7 +263,7 @@ pub const Layer = struct {
         for (0..self.num_output_nodes) |node_index| {
             for (self.num_input_nodes) |node_in_index| {
                 // dz_2/dw_2 = a_1
-                const derivative_weighted_input_wrt_weight = layer_output_data.inputs[node_in_index];
+                const derivative_weighted_input_wrt_weight = self.layer_output_data.inputs[node_in_index];
                 // Evaluate the partial derivative of cost with respect to the weight of the current connection
                 // dc/dw_2 = dz_2/dw_2 * shareable_node_derivatives[node_index]
                 const derivative_cost_wrt_weight = derivative_weighted_input_wrt_weight * shareable_node_derivatives[node_index];

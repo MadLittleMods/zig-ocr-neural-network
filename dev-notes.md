@@ -135,3 +135,28 @@ Libraries for linear algebra stuff (working with vectors, matrices).
     - https://zig.news/michalz/fast-multi-platform-simd-math-library-in-zig-2adn
  - [`zalgebra`](https://github.com/kooparse/zalgebra)
  - [`zlm`](https://github.com/ziglibs/zlm)
+
+
+
+## Desmos
+
+Export data from tables in Desmos (run the snippet in the JavaScript developer tools console)
+
+Example: https://www.desmos.com/calculator/r1hhwpoxeq
+
+```js
+state = Calc.getState()
+
+for (let i = 0; i < state.expressions.list.length; i++) {
+    if (state.expressions.list[i].type == "table") {
+        for (let columnIndex = 0; columnIndex < state.expressions.list[i].columns.length; columnIndex += 2) {
+            console.log('next set---------------------');
+            for (let valueIndex = 0; valueIndex < state.expressions.list[i].columns[columnIndex].values.length; valueIndex += 1) {
+                const x = state.expressions.list[i].columns[columnIndex].values[valueIndex];
+                const y = state.expressions.list[i].columns[columnIndex + 1].values[valueIndex];
+                console.log(`${x}, ${y}`);
+            }
+        }
+    }
+}
+```
