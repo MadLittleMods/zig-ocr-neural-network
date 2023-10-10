@@ -15,7 +15,7 @@ const TEST_LABELS_FILE_PATH = "data/t10k-labels-idx1-ubyte";
 const NUMBER_OF_IMAGES_TO_TRAIN_ON = 10000; // (max 60k)
 const NUMBER_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
-const EPOCHS = 25;
+const EPOCHS = 1000;
 const LEARN_RATE: f64 = 0.1;
 
 pub fn main() !void {
@@ -199,8 +199,8 @@ pub fn main() !void {
     );
     defer neural_network.deinit(allocator);
 
-    var epoch_count: usize = 0;
-    while (epoch_count < EPOCHS) : (epoch_count += 1) {
+    var current_epoch_iteration_count: usize = 0;
+    while (current_epoch_iteration_count < EPOCHS) : (current_epoch_iteration_count += 1) {
         try neural_network.learn(
             &animal_training_data_points,
             LEARN_RATE,
@@ -208,6 +208,6 @@ pub fn main() !void {
         );
 
         const cost = try neural_network.cost(&animal_training_data_points, allocator);
-        std.log.debug("epoch {d} -> cost {d}", .{ epoch_count, cost });
+        std.log.debug("epoch {d} -> cost {d}", .{ current_epoch_iteration_count, cost });
     }
 }

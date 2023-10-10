@@ -63,12 +63,33 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             inputs: []const f64,
             allocator: std.mem.Allocator,
         ) ![]const f64 {
-            var next_inputs = inputs;
+            var inputs_to_next_layer = inputs;
             for (self.layers) |*layer| {
-                next_inputs = try layer.calculateOutputs(next_inputs, allocator);
+                inputs_to_next_layer = try layer.calculateOutputs(inputs_to_next_layer, allocator);
             }
 
-            return next_inputs;
+            return inputs_to_next_layer;
+        }
+
+        pub fn freeAfterCalculateOutputs(self: *Self, allocator: std.mem.Allocator) void {
+            // We only need to free the inputs for the hidden layers because the output
+            // of one layer is the input to the next layer. We do need to clean up the
+            // output of the output layer though (see below).
+            for (self.layers, 0..) |*layer, layer_index| {
+                // Avoid freeing the initial `inputs` that someone passed in to this function.
+                if (layer_index > 0) {
+                    allocator.free(layer.layer_output_data.inputs);
+                }
+
+                // We don't need to free the `weighted_input_sums` because it's shared
+                // across runs and cleaned up in `layer.deinit()`.
+                // allocator.free(layer.layer_output_data.weighted_input_sums);
+            }
+
+            // Clean up the output of the output layer
+            const output_layer_index = self.layers.len - 1;
+            const output_layer = self.layers[output_layer_index];
+            allocator.free(output_layer.layer_output_data.outputs);
         }
 
         // Run the input values through the network and calculate which output node has
@@ -79,6 +100,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             allocator: std.mem.Allocator,
         ) !u32 {
             var outputs = try self.calculateOutputs(inputs, allocator);
+            defer self.freeAfterCalculateOutputs(allocator);
+
             var max_output = outputs[0];
             var max_output_index = 0;
             for (outputs, 0..) |output, index| {
@@ -97,6 +120,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             allocator: std.mem.Allocator,
         ) !f64 {
             var outputs = try self.calculateOutputs(data_point.inputs, allocator);
+            defer self.freeAfterCalculateOutputs(allocator);
+
             return self.cost_function.many_cost(outputs, &data_point.expected_outputs);
         }
 
@@ -148,25 +173,29 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         ) !void {
             // Feed data through the network to calculate outputs. Save all
             // inputs/weighted_inputs/activations along the way to use for
-            // backpropagation.
-            var inputs_to_next_layer = data_point.inputs;
-            for (self.layers) |*layer| {
-                inputs_to_next_layer = try layer.calculateOutputs(inputs_to_next_layer, allocator);
-            }
+            // backpropagation (`layer.layer_output_data`).
+            _ = try self.calculateOutputs(data_point.inputs, allocator);
+            defer self.freeAfterCalculateOutputs(allocator);
+            // var inputs_to_next_layer = data_point.inputs;
+            // for (self.layers) |*layer| {
+            //     inputs_to_next_layer = try layer.calculateOutputs(inputs_to_next_layer, allocator);
+            // }
 
             // ---- Backpropagation ----
             // Update gradients of the output layer
             const output_layer_index = self.layers.len - 1;
             var output_layer = self.layers[output_layer_index];
-            var shareable_node_derivatives = try output_layer.calculateOutputLayerShareableNodeDerivatives(
+            var output_layer_shareable_node_derivatives = try output_layer.calculateOutputLayerShareableNodeDerivatives(
                 &data_point.expected_outputs,
                 allocator,
             );
+            defer allocator.free(output_layer_shareable_node_derivatives);
             try output_layer.updateCostGradients(
-                shareable_node_derivatives,
+                output_layer_shareable_node_derivatives,
             );
 
             // Loop backwards through all of the hidden layers and update their gradients
+            var shareable_node_derivatives = output_layer_shareable_node_derivatives;
             const num_hidden_layers = self.layers.len - 1;
             for (0..num_hidden_layers) |forward_hidden_layer_index| {
                 const backward_hidden_layer_index = num_hidden_layers - forward_hidden_layer_index - 1;
@@ -177,6 +206,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     shareable_node_derivatives,
                     allocator,
                 );
+                defer allocator.free(shareable_node_derivatives);
                 try hidden_layer.updateCostGradients(
                     shareable_node_derivatives,
                 );
