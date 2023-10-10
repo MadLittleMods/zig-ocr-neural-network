@@ -114,6 +114,22 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             return DataPointType.oneHotIndexToLabel(max_output_index);
         }
 
+        pub fn getAccuracyAgainstTestingDataPoints(
+            self: *Self,
+            testing_data_points: []const DataPointType,
+            allocator: std.mem.Allocator,
+        ) !f64 {
+            var correct_count: f64 = 0;
+            for (testing_data_points) |testing_data_point| {
+                const result = try self.classify(testing_data_point.inputs, allocator);
+                if (DataPointType.checkLabelsEqual(result, testing_data_point.label)) {
+                    correct_count += 1;
+                }
+            }
+
+            return correct_count / @as(f64, @floatFromInt(testing_data_points.len));
+        }
+
         /// Calculate the cost of the network for a single data point
         pub fn cost_individual_data_point(
             self: *Self,

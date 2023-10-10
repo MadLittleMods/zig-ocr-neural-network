@@ -2,13 +2,19 @@ const std = @import("std");
 const ActivationFunction = @import("activation_functions.zig").ActivationFunction;
 const CostFunction = @import("cost_functions.zig").CostFunction;
 
-/// Used to keep track of what a layer took in as input and what we outputted last time we /
-//calculated the output of this layer. This is used for backpropagation.
+/// Used to keep track of what a layer took in as input and what we outputted last time we
+/// calculated the output of this layer. This is used for backpropagation.
 pub const LayerOutputData = struct {
+    /// The inputs to the layer that produce the following outputs.
     /// Size: num_input_nodes
     inputs: []const f64,
+    /// The weighted input sum for each node in the layer. This is the sum of all the
+    /// incoming connections to the node after they have been multiplied by their
+    /// respective weights (plus a bias).
     /// Size: num_output_nodes
     weighted_input_sums: []f64,
+    /// The output of the layer after passing the weighted input sums through the
+    /// activation function.
     /// Size: num_output_nodes
     outputs: []f64,
 };

@@ -26,19 +26,7 @@ pub fn DataPoint(
         fn oneHotEncodeLabel(label: InputLabelType) [labels.len]f64 {
             var one_hot = std.mem.zeroes([labels.len]f64);
             for (labels, 0..) |comparison_label, label_index| {
-                // This is just complicated logic to handle numbers or strings as labels
-                const is_label_matching = switch (@typeInfo(InputLabelType)) {
-                    .Int, .Float => comparison_label == label,
-                    .Pointer => |ptr_info| blk: {
-                        if (!ptr_info.is_const or ptr_info.size != .Slice or ptr_info.child != u8) {
-                            @compileError("unsupported type");
-                        }
-
-                        break :blk std.mem.eql(u8, comparison_label, label);
-                    },
-                    else => @compileError("unsupported type"),
-                };
-
+                const is_label_matching = checkLabelsEqual(comparison_label, label);
                 if (is_label_matching) {
                     one_hot[label_index] = 1.0;
                 } else {
@@ -50,6 +38,23 @@ pub fn DataPoint(
 
         pub fn oneHotIndexToLabel(one_hot_index: usize) InputLabelType {
             return labels[one_hot_index];
+        }
+
+        // This is just complicated logic to handle numbers or strings as labels
+        pub fn checkLabelsEqual(a: InputLabelType, b: InputLabelType) bool {
+            const is_label_matching = switch (@typeInfo(InputLabelType)) {
+                .Int, .Float => a == b,
+                .Pointer => |ptr_info| blk: {
+                    if (!ptr_info.is_const or ptr_info.size != .Slice or ptr_info.child != u8) {
+                        @compileError("unsupported type");
+                    }
+
+                    break :blk std.mem.eql(u8, a, b);
+                },
+                else => @compileError("unsupported type"),
+            };
+
+            return is_label_matching;
         }
     };
 }

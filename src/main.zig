@@ -18,9 +18,6 @@ const NUMBER_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 const TRAINING_EPOCHS = 1000;
 const LEARN_RATE: f64 = 0.1;
 
-const animal_labels = [_][]const u8{ "fish", "goat" };
-const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -104,6 +101,19 @@ pub fn main() !void {
     // );
     // _ = neural_network;
 
+    // This is a small testing dataset (to make sure our code is working) with only 2
+    // arbitrary features (x and y) where the labeled data points (fish and goat) occupy
+    // distinct parts of the graph. The boundary between the two labels is not a
+    // straight line (linear relationship) so we need the power of a neural network to
+    // learn the non-linear relationship.
+    //
+    // Since we only have two inputs with this dataset, we could graph the data points
+    // based on the inputs as (x, y) and colored based on the label. Then we can run the
+    // neural network over every pixel in the graph to visualize the boundary that the
+    // networks weights and biases is making. See https://youtu.be/hfMk-kjRv4c?t=311 for
+    // reference.
+    const animal_labels = [_][]const u8{ "fish", "goat" };
+    const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
     // Graph of animal data points:
     // https://www.desmos.com/calculator/x72k0x9ies
     const animal_training_data_points = [_]AnimalDataPoint{
@@ -208,8 +218,7 @@ pub fn main() !void {
         );
 
         const cost = try neural_network.cost(&animal_training_data_points, allocator);
-        const accuracy = try getAccuracyAgainstTestingDataPoints(
-            &neural_network,
+        const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
             &animal_testing_data_points,
             allocator,
         );
@@ -219,20 +228,4 @@ pub fn main() !void {
             accuracy,
         });
     }
-}
-
-fn getAccuracyAgainstTestingDataPoints(
-    neural_network: *neural_networks.NeuralNetwork(AnimalDataPoint),
-    testing_data_points: []const AnimalDataPoint,
-    allocator: std.mem.Allocator,
-) !f64 {
-    var correct_count: f64 = 0;
-    for (testing_data_points) |testing_data_point| {
-        const result = try neural_network.classify(testing_data_point.inputs, allocator);
-        if (std.mem.eql(u8, result, testing_data_point.label)) {
-            correct_count += 1;
-        }
-    }
-
-    return correct_count / @as(f64, @floatFromInt(testing_data_points.len));
 }
