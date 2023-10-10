@@ -15,8 +15,11 @@ const TEST_LABELS_FILE_PATH = "data/t10k-labels-idx1-ubyte";
 const NUMBER_OF_IMAGES_TO_TRAIN_ON = 10000; // (max 60k)
 const NUMBER_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
-const EPOCHS = 1000;
+const TRAINING_EPOCHS = 1000;
 const LEARN_RATE: f64 = 0.1;
+
+const animal_labels = [_][]const u8{ "fish", "goat" };
+const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -101,8 +104,6 @@ pub fn main() !void {
     // );
     // _ = neural_network;
 
-    const animal_labels = [_][]const u8{ "fish", "goat" };
-    const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
     // Graph of animal data points:
     // https://www.desmos.com/calculator/x72k0x9ies
     const animal_training_data_points = [_]AnimalDataPoint{
@@ -189,7 +190,6 @@ pub fn main() !void {
         AnimalDataPoint.init(&[_]f64{ 0.709, 0.679 }, "goat"),
         AnimalDataPoint.init(&[_]f64{ 0.18, 0.527 }, "goat"),
     };
-    _ = animal_testing_data_points;
 
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
         &[_]u32{ 2, 3, animal_labels.len },
@@ -200,7 +200,7 @@ pub fn main() !void {
     defer neural_network.deinit(allocator);
 
     var current_epoch_iteration_count: usize = 0;
-    while (current_epoch_iteration_count < EPOCHS) : (current_epoch_iteration_count += 1) {
+    while (current_epoch_iteration_count < TRAINING_EPOCHS) : (current_epoch_iteration_count += 1) {
         try neural_network.learn(
             &animal_training_data_points,
             LEARN_RATE,
@@ -208,6 +208,31 @@ pub fn main() !void {
         );
 
         const cost = try neural_network.cost(&animal_training_data_points, allocator);
-        std.log.debug("epoch {d} -> cost {d}", .{ current_epoch_iteration_count, cost });
+        const accuracy = try getAccuracyAgainstTestingDataPoints(
+            &neural_network,
+            &animal_testing_data_points,
+            allocator,
+        );
+        std.log.debug("epoch {d} -> cost {d}, acccuracy {d}", .{
+            current_epoch_iteration_count,
+            cost,
+            accuracy,
+        });
     }
+}
+
+fn getAccuracyAgainstTestingDataPoints(
+    neural_network: *neural_networks.NeuralNetwork(AnimalDataPoint),
+    testing_data_points: []const AnimalDataPoint,
+    allocator: std.mem.Allocator,
+) !f64 {
+    var correct_count: f64 = 0;
+    for (testing_data_points) |testing_data_point| {
+        const result = try neural_network.classify(testing_data_point.inputs, allocator);
+        if (std.mem.eql(u8, result, testing_data_point.label)) {
+            correct_count += 1;
+        }
+    }
+
+    return correct_count / @as(f64, @floatFromInt(testing_data_points.len));
 }

@@ -98,19 +98,20 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             self: *Self,
             inputs: []const f64,
             allocator: std.mem.Allocator,
-        ) !u32 {
+        ) !DataPointType.LabelType {
             var outputs = try self.calculateOutputs(inputs, allocator);
             defer self.freeAfterCalculateOutputs(allocator);
 
             var max_output = outputs[0];
-            var max_output_index = 0;
+            var max_output_index: usize = 0;
             for (outputs, 0..) |output, index| {
                 if (output > max_output) {
                     max_output = output;
                     max_output_index = index;
                 }
             }
-            return max_output_index;
+
+            return DataPointType.oneHotIndexToLabel(max_output_index);
         }
 
         /// Calculate the cost of the network for a single data point

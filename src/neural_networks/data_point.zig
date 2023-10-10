@@ -2,18 +2,20 @@ const std = @import("std");
 
 pub fn DataPoint(
     /// The type of the label. This can be an integer, float, or string (`[]const u8`).
-    comptime LabelType: type,
+    comptime InputLabelType: type,
     /// The possible labels for a data point.
-    comptime labels: []const LabelType,
+    comptime labels: []const InputLabelType,
 ) type {
     return struct {
         const Self = @This();
 
+        pub const LabelType = InputLabelType;
+
         inputs: []const f64,
         expected_outputs: [labels.len]f64,
-        label: LabelType,
+        label: InputLabelType,
 
-        pub fn init(inputs: []const f64, label: LabelType) Self {
+        pub fn init(inputs: []const f64, label: InputLabelType) Self {
             return .{
                 .inputs = inputs,
                 .expected_outputs = oneHotEncodeLabel(label),
@@ -21,10 +23,11 @@ pub fn DataPoint(
             };
         }
 
-        fn oneHotEncodeLabel(label: LabelType) [labels.len]f64 {
+        fn oneHotEncodeLabel(label: InputLabelType) [labels.len]f64 {
             var one_hot = std.mem.zeroes([labels.len]f64);
             for (labels, 0..) |comparison_label, label_index| {
-                const is_label_matching = switch (@typeInfo(LabelType)) {
+                // This is just complicated logic to handle numbers or strings as labels
+                const is_label_matching = switch (@typeInfo(InputLabelType)) {
                     .Int, .Float => comparison_label == label,
                     .Pointer => |ptr_info| blk: {
                         if (!ptr_info.is_const or ptr_info.size != .Slice or ptr_info.child != u8) {
@@ -43,6 +46,10 @@ pub fn DataPoint(
                 }
             }
             return one_hot;
+        }
+
+        pub fn oneHotIndexToLabel(one_hot_index: usize) InputLabelType {
+            return labels[one_hot_index];
         }
     };
 }
