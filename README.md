@@ -37,6 +37,12 @@ $ zig build run
 ...
 ```
 
+To run a basic graphable dataset example, you can use the `simple_xy_animal_sample_main.zig`:
+
+```sh
+$ zig run src/simple_xy_animal_sample_main.zig
+```
+
 ## Dev notes
 
 See the [*developer notes*](./dev-notes.md) for more information.
