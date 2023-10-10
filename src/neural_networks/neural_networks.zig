@@ -58,18 +58,27 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         }
 
         // Run the input values through the network to calculate the output values
-        pub fn calculateOutputs(self: *Self, inputs: []const f64) ![]f64 {
+        pub fn calculateOutputs(
+            self: *Self,
+            inputs: []const f64,
+            allocator: std.mem.Allocator,
+        ) ![]const f64 {
+            var next_inputs = inputs;
             for (self.layers) |*layer| {
-                inputs = try layer.calculateOutputs(inputs);
+                next_inputs = try layer.calculateOutputs(next_inputs, allocator);
             }
 
-            return inputs;
+            return next_inputs;
         }
 
         // Run the input values through the network and calculate which output node has
         // the highest value
-        pub fn classify(self: *Self, inputs: []f64) !u32 {
-            var outputs = try self.calculateOutputs(inputs);
+        pub fn classify(
+            self: *Self,
+            inputs: []const f64,
+            allocator: std.mem.Allocator,
+        ) !u32 {
+            var outputs = try self.calculateOutputs(inputs, allocator);
             var max_output = outputs[0];
             var max_output_index = 0;
             for (outputs, 0..) |output, index| {
@@ -82,16 +91,24 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         }
 
         /// Calculate the cost of the network for a single data point
-        pub fn cost_individual_data_point(self: *Self, data_point: DataPointType) !f64 {
-            var outputs = try self.calculateOutputs(data_point.inputs);
+        pub fn cost_individual_data_point(
+            self: *Self,
+            data_point: DataPointType,
+            allocator: std.mem.Allocator,
+        ) !f64 {
+            var outputs = try self.calculateOutputs(data_point.inputs, allocator);
             return self.cost_function.many_cost(outputs, &data_point.expected_outputs);
         }
 
         /// Calculate the average cost of the network for a batch of data points
-        pub fn cost(self: *Self, data_points: []const DataPointType) !f64 {
+        pub fn cost(
+            self: *Self,
+            data_points: []const DataPointType,
+            allocator: std.mem.Allocator,
+        ) !f64 {
             var total_cost: f64 = 0.0;
             for (data_points) |data_point| {
-                total_cost += try self.cost_individual_data_point(data_point);
+                total_cost += try self.cost_individual_data_point(data_point, allocator);
             }
             return total_cost / @as(f64, @floatFromInt(data_points.len));
         }
@@ -141,20 +158,24 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // Update gradients of the output layer
             const output_layer_index = self.layers.len - 1;
             var output_layer = self.layers[output_layer_index];
-            var shareable_node_derivatives = output_layer.calculateOutputLayerShareableNodeDerivatives(
+            var shareable_node_derivatives = try output_layer.calculateOutputLayerShareableNodeDerivatives(
                 &data_point.expected_outputs,
+                allocator,
             );
             try output_layer.updateCostGradients(
                 shareable_node_derivatives,
             );
 
             // Loop backwards through all of the hidden layers and update their gradients
-            var hidden_layer_index = output_layer_index - 1;
-            while (hidden_layer_index >= 0) : (hidden_layer_index -= 1) {
-                var hidden_layer = self.layers[hidden_layer_index];
-                shareable_node_derivatives = hidden_layer.calculateHiddenLayerShareableNodeDerivatives(
-                    self.layers[hidden_layer_index + 1],
+            const num_hidden_layers = self.layers.len - 1;
+            for (0..num_hidden_layers) |forward_hidden_layer_index| {
+                const backward_hidden_layer_index = num_hidden_layers - forward_hidden_layer_index - 1;
+
+                var hidden_layer = self.layers[backward_hidden_layer_index];
+                shareable_node_derivatives = try hidden_layer.calculateHiddenLayerShareableNodeDerivatives(
+                    &self.layers[backward_hidden_layer_index + 1],
                     shareable_node_derivatives,
+                    allocator,
                 );
                 try hidden_layer.updateCostGradients(
                     shareable_node_derivatives,

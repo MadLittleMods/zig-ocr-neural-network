@@ -8,7 +8,7 @@
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
 pub const Relu = struct {
-    pub fn activate(input: f64) f64 {
+    pub fn activate(_: @This(), input: f64) f64 {
         return @max(0.0, input);
 
         // Or in other words:
@@ -19,7 +19,7 @@ pub const Relu = struct {
         // return 0.0;
     }
 
-    pub fn derivative(input: f64) f64 {
+    pub fn derivative(_: @This(), input: f64) f64 {
         if (input > 0.0) {
             return 1.0;
         }
@@ -33,19 +33,19 @@ pub const Relu = struct {
 pub const Sigmoid = struct {
     const Self = @This();
 
-    pub fn activate(input: f64) f64 {
+    pub fn activate(_: @This(), input: f64) f64 {
         return 1.0 / (1.0 + @exp(-input));
     }
 
-    pub fn derivative(input: f64) f64 {
-        const activation_value = Self.activate(input);
+    pub fn derivative(self: @This(), input: f64) f64 {
+        const activation_value = Self.activate(self, input);
         return activation_value * (1.0 - activation_value);
     }
 };
 
 pub const ActivationFunction = union(enum) {
-    Relu: Relu,
-    Sigmoid: Sigmoid,
+    relu: Relu,
+    sigmoid: Sigmoid,
 
     pub fn activate(self: @This(), input: f64) f64 {
         return switch (self) {

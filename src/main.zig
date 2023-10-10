@@ -193,8 +193,8 @@ pub fn main() !void {
 
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
         &[_]u32{ 2, 3, animal_labels.len },
-        neural_networks.ActivationFunction.Relu,
-        neural_networks.CostFunction.MeanSquaredError,
+        neural_networks.ActivationFunction{ .relu = .{} },
+        neural_networks.CostFunction{ .mean_squared_error = .{} },
         allocator,
     );
     defer neural_network.deinit(allocator);
@@ -207,7 +207,7 @@ pub fn main() !void {
             allocator,
         );
 
-        const cost = neural_network.cost(&animal_training_data_points);
+        const cost = try neural_network.cost(&animal_training_data_points, allocator);
         std.log.debug("epoch {d} -> cost {d}", .{ epoch_count, cost });
     }
 }
