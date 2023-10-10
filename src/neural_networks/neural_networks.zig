@@ -190,7 +190,6 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 &data_point.expected_outputs,
                 allocator,
             );
-            defer allocator.free(output_layer_shareable_node_derivatives);
             try output_layer.updateCostGradients(
                 output_layer_shareable_node_derivatives,
             );
@@ -200,18 +199,24 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             const num_hidden_layers = self.layers.len - 1;
             for (0..num_hidden_layers) |forward_hidden_layer_index| {
                 const backward_hidden_layer_index = num_hidden_layers - forward_hidden_layer_index - 1;
-
                 var hidden_layer = self.layers[backward_hidden_layer_index];
+
+                // Free the shareable_node_derivatives from the last iteration at the
+                // end of the block after we're done using it in the next hidden layer.
+                const shareable_node_derivatives_to_free = shareable_node_derivatives;
+                defer allocator.free(shareable_node_derivatives_to_free);
+
                 shareable_node_derivatives = try hidden_layer.calculateHiddenLayerShareableNodeDerivatives(
                     &self.layers[backward_hidden_layer_index + 1],
                     shareable_node_derivatives,
                     allocator,
                 );
-                defer allocator.free(shareable_node_derivatives);
                 try hidden_layer.updateCostGradients(
                     shareable_node_derivatives,
                 );
             }
+            // Free the last iteration of the loop
+            defer allocator.free(shareable_node_derivatives);
         }
     };
 }
