@@ -150,7 +150,9 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         ) !f64 {
             var total_cost: f64 = 0.0;
             for (data_points) |data_point| {
-                total_cost += try self.cost_individual_data_point(data_point, allocator);
+                const cost_of_data_point = try self.cost_individual_data_point(data_point, allocator);
+                // std.log.debug("cost_of_data_point: {d}", .{cost_of_data_point});
+                total_cost += cost_of_data_point;
             }
             return total_cost / @as(f64, @floatFromInt(data_points.len));
         }

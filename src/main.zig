@@ -11,7 +11,7 @@ const NUM_OF_IMAGES_TO_TRAIN_ON = 10000; // (max 60k)
 const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
 const TRAINING_EPOCHS = 1000;
-const LEARN_RATE: f64 = 0.1;
+const LEARN_RATE: f64 = 0.05;
 const BATCH_SIZE: u32 = 32;
 
 pub fn main() !void {
@@ -74,6 +74,9 @@ pub fn main() !void {
     );
     defer neural_network.deinit(allocator);
 
+    // std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[1].weights});
+    // std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[1].biases});
+
     var current_epoch_index: usize = 0;
     while (current_epoch_index < TRAINING_EPOCHS) : (current_epoch_index += 1) {
         // Split the training data into mini batches so way we can get through learning
@@ -95,13 +98,17 @@ pub fn main() !void {
                 allocator,
             );
 
+            // std.log.debug("layer weights {d:.3}", .{neural_network.layers[1].weights});
+            // std.log.debug("layer biases {d:.3}", .{neural_network.layers[1].biases});
+
             const cost = try neural_network.cost(testing_data_points, allocator);
             const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
                 testing_data_points,
                 allocator,
             );
-            std.log.debug("epoch {d} -> cost {d}, acccuracy {d}", .{
+            std.log.debug("epoch {d: <3} batch {d: <3} -> cost {d}, acccuracy {d}", .{
                 current_epoch_index,
+                batch_index,
                 cost,
                 accuracy,
             });

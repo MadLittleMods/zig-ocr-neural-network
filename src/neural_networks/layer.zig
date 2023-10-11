@@ -95,21 +95,28 @@ pub const Layer = struct {
 
         // Initialize the weights of the network to random values
         for (weights) |*weight| {
-            // Get a random value between -1 and +1
-            const random_value = prng.random().floatNorm(f64);
+            // Get a random value with a range `stddev = 1` centered around `mean = 0`.
+            // When using a normal distribution like this, the odds are most likely that
+            // your number will fall in the [-3, +3] range.
+            //
+            // > To use different parameters, use: floatNorm(...) * desiredStddev + desiredMean.
+            const normal_random_value = prng.random().floatNorm(f64);
             // Now to choose a good weight initialization scheme. The "best" heuristic
             // often depends on the specific activiation function being used. We want to
             // avoid the vanishing/exploding gradient problem.
             //
             // Xavier initialization takes a set of random values sampled uniformly from
             // a range proportional to the size of the number of nodes in the previous
-            // layer. Specifically multiplying the random value by `1 / sqrt(num_input_nodes)`.
+            // layer (fan-in). Specifically multiplying the normal random value by
+            // `stddev = sqrt(1 / fan_in)`.
             //
             // "He initialization" is similar to Xavier initialization, but multiplies
-            // the random value by `1 / sqrt(2 / num_input_nodes)`. This modification is
-            // suggested when using the ReLU activation function to achieve a "properly
-            // scaled uniform distribution for initialization".
-            weight.* = random_value / @sqrt(2 / @as(f64, @floatFromInt(num_input_nodes)));
+            // the normal random value by `stddev = sqrt(2 / fan_in)`. This modification
+            // is suggested when using the ReLU activation function to achieve a
+            // "properly scaled uniform distribution for initialization".
+            const desired_mean = 0;
+            const desired_standard_deviation = @sqrt(2.0 / @as(f64, @floatFromInt(num_input_nodes)));
+            weight.* = normal_random_value * desired_standard_deviation + desired_mean;
 
             // Note: there are many different ways of trying to chose a good range for
             // the random weights, and these depend on facors such as the activation
