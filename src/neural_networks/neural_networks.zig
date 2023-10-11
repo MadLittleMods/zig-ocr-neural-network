@@ -193,10 +193,6 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // backpropagation (`layer.layer_output_data`).
             _ = try self.calculateOutputs(data_point.inputs, allocator);
             defer self.freeAfterCalculateOutputs(allocator);
-            // var inputs_to_next_layer = data_point.inputs;
-            // for (self.layers) |*layer| {
-            //     inputs_to_next_layer = try layer.calculateOutputs(inputs_to_next_layer, allocator);
-            // }
 
             // ---- Backpropagation ----
             // Update gradients of the output layer

@@ -12,6 +12,7 @@ const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
 const TRAINING_EPOCHS = 1000;
 const LEARN_RATE: f64 = 0.1;
+const BATCH_SIZE: u32 = 32;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -60,6 +61,10 @@ pub fn main() !void {
             raw_mnist_data.testing_labels[image_index],
         );
     }
+    std.log.debug("Created normalized data points. Training on {d} data points, testing on {d}", .{
+        training_data_points.len,
+        testing_data_points.len,
+    });
 
     var neural_network = try neural_networks.NeuralNetwork(DigitDataPoint).init(
         &[_]u32{ 784, 100, digit_labels.len },
@@ -69,23 +74,37 @@ pub fn main() !void {
     );
     defer neural_network.deinit(allocator);
 
-    var current_epoch_iteration_count: usize = 0;
-    while (current_epoch_iteration_count < TRAINING_EPOCHS) : (current_epoch_iteration_count += 1) {
-        try neural_network.learn(
-            training_data_points,
-            LEARN_RATE,
-            allocator,
-        );
+    var current_epoch_index: usize = 0;
+    while (current_epoch_index < TRAINING_EPOCHS) : (current_epoch_index += 1) {
+        // Split the training data into mini batches so way we can get through learning
+        // iterations faster. It does make the learning progress a bit noisy because the
+        // cost landscape is a bit different for each batch but it's fast and apparently
+        // the noise can even be beneficial for escaping settle points in the cost
+        // gradient (ridgelines between two valleys). Instead of "gradient descent" with
+        // the full training set, using mini batches is called "stochastic gradient
+        // descent".
+        var batch_index: u32 = 0;
+        while (batch_index < NUM_OF_IMAGES_TO_TRAIN_ON / BATCH_SIZE) : (batch_index += 1) {
+            const batch_start_index = batch_index * BATCH_SIZE;
+            const batch_end_index = batch_start_index + BATCH_SIZE;
+            const training_batch = training_data_points[batch_start_index..batch_end_index];
 
-        const cost = try neural_network.cost(testing_data_points, allocator);
-        const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
-            testing_data_points,
-            allocator,
-        );
-        std.log.debug("epoch {d} -> cost {d}, acccuracy {d}", .{
-            current_epoch_iteration_count,
-            cost,
-            accuracy,
-        });
+            try neural_network.learn(
+                training_batch,
+                LEARN_RATE,
+                allocator,
+            );
+
+            const cost = try neural_network.cost(testing_data_points, allocator);
+            const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
+                testing_data_points,
+                allocator,
+            );
+            std.log.debug("epoch {d} -> cost {d}, acccuracy {d}", .{
+                current_epoch_index,
+                cost,
+                accuracy,
+            });
+        }
     }
 }
