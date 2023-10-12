@@ -232,7 +232,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // `1.9999` ratio and the second number with `2.0001` ratio. The
             // difference between the two ratios is `0.0002` which is greater than
             // `0.0001` so we would incorrectly think that the ratio is wrong.
-            const ratio_threshold: f64 = 0.002;
+            const ratio_threshold: f64 = 0.0002;
             var found_estimated_to_actual_cost_gradient_ratio: f64 = 0;
 
             var has_flawed_weight_cost_gradient: bool = false;
@@ -380,33 +380,58 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // We want h to be small but not too small to cause float point precision problems.
             const h: f64 = 0.0001;
             const original_cost = try self.cost_many(training_data_batch, allocator);
+            _ = original_cost;
 
             // Calculate the cost gradient for the current weights.
-            // Currently using the finite difference formula: (f(x + h) - f(x)) / h
-            // TODO: Use the centered formula for better accuracy: (f(x + h) - f(x - h)) / 2h
+            // We're using the the centered difference formula for better accuracy: (f(x + h) - f(x - h)) / 2h
+            // The normal finite difference formula has less accuracy: (f(x + h) - f(x)) / h
             for (0..layer.num_output_nodes) |node_index| {
                 for (0..layer.num_input_nodes) |node_in_index| {
-                    // Make a small nudge the weight
+                    // Make a small nudge the weight in the positive direction (+ h)
                     layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] += h;
                     // Check how much that nudge causes the cost to change
-                    const delta_cost = try self.cost_many(training_data_batch, allocator) - original_cost;
+                    const cost1 = try self.cost_many(training_data_batch, allocator);
+
+                    // Make a small nudge the weight in the negative direction (- h). We
+                    // `- 2h` because we nudged the weight in the positive direction by
+                    // `h` just above and want to get back original_value first so we
+                    // minus h, and then minus h again to get to (- h).
+                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] -= 2 * h;
+                    // Check how much that nudge causes the cost to change
+                    const cost2 = try self.cost_many(training_data_batch, allocator);
+                    // Find how much the cost changed between the two nudges
+                    const delta_cost = cost1 - cost2;
+
                     // Reset the weight back to its original value
-                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] -= h;
+                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] += h;
+
                     // Calculate the gradient: change in cost / change in weight (which is h)
-                    costGradientWeights[layer.getFlatWeightIndex(node_index, node_in_index)] = delta_cost / h;
+                    costGradientWeights[layer.getFlatWeightIndex(node_index, node_in_index)] = delta_cost / (2 * h);
                 }
             }
 
             // Calculate the cost gradient for the current biases
             for (0..layer.num_output_nodes) |node_index| {
-                // Make a small nudge the bias
+                // Make a small nudge the bias (+ h)
                 layer.biases[node_index] += h;
                 // Check how much that nudge causes the cost to change
-                const delta_cost = try self.cost_many(training_data_batch, allocator) - original_cost;
+                const cost1 = try self.cost_many(training_data_batch, allocator);
+
+                // Make a small nudge the bias in the negative direction (- h). We
+                // `- 2h` because we nudged the bias in the positive direction by
+                // `h` just above and want to get back original_value first so we
+                // minus h, and then minus h again to get to (- h).
+                layer.biases[node_index] -= 2 * h;
+                // Check how much that nudge causes the cost to change
+                const cost2 = try self.cost_many(training_data_batch, allocator);
+                // Find how much the cost changed between the two nudges
+                const delta_cost = cost1 - cost2;
+
                 // Reset the bias back to its original value
-                layer.biases[node_index] -= h;
+                layer.biases[node_index] += h;
+
                 // Calculate the gradient: change in cost / change in bias (which is h)
-                costGradientBiases[node_index] = delta_cost / h;
+                costGradientBiases[node_index] = delta_cost / (2 * h);
             }
 
             return .{
