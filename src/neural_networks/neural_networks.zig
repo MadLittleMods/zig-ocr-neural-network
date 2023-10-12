@@ -10,22 +10,23 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
     return struct {
         const Self = @This();
 
-        activation_function: ActivationFunction,
         cost_function: CostFunction,
         layers: []Layer,
 
         pub fn init(
             layer_sizes: []const u32,
             activation_function: ActivationFunction,
+            output_layer_activation_function: ActivationFunction,
             cost_function: CostFunction,
             allocator: std.mem.Allocator,
         ) !Self {
             var layers = try allocator.alloc(Layer, layer_sizes.len - 1);
+            const output_layer_index = layers.len - 1;
             for (layers, 0..) |*layer, layer_index| {
                 layer.* = try Layer.init(
                     layer_sizes[layer_index],
                     layer_sizes[layer_index + 1],
-                    activation_function,
+                    if (layer_index == output_layer_index) output_layer_activation_function else activation_function,
                     allocator,
                     .{
                         // We just set the cost function for all layers even though it's
@@ -35,7 +36,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 );
             }
 
-            if (layers[layers.len - 1].cost_function) |_| {
+            if (layers[output_layer_index].cost_function) |_| {
                 // no-op
             } else {
                 std.log.err("NeuralNetwork.init(...): The cost function for the output layer (the last layer in the neural network) must be specified", .{});
@@ -43,7 +44,6 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             }
 
             return Self{
-                .activation_function = activation_function,
                 .cost_function = cost_function,
                 .layers = layers,
             };
@@ -157,7 +157,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             return total_cost / @as(f64, @floatFromInt(data_points.len));
         }
 
-        /// Run a single iteration of gradient descent (using the finite-difference method).
+        /// Run a single iteration of gradient descent.
         /// We use gradient descent to minimize the cost function.
         pub fn learn(
             self: *Self,
@@ -172,6 +172,9 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 try self.updateCostGradients(data_point, allocator);
             }
 
+            // std.log.debug("layer costGradientWeights {d:.3}", .{self.layers[1].costGradientWeights});
+            // std.log.debug("layer costGradientBiases {d:.3}", .{self.layers[1].costGradientBiases});
+
             // Gradient descent step: update all weights and biases in the network
             for (self.layers) |*layer| {
                 layer.applyCostGradients(
@@ -182,6 +185,55 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     // average gradient.
                     learn_rate / @as(f64, @floatFromInt(training_data_batch.len)),
                 );
+            }
+        }
+
+        /// Run a single iteration of gradient descent (using the finite-difference method).
+        /// This is extremely slow because we have to run the cost function for every weight
+        /// and bias in the network against all of the training data points.
+        ///
+        /// We can use this to double check that our backpropagation algorithm is working correctly.
+        pub fn learn_estimate(
+            self: *Self,
+            training_data_batch: []const DataPointType,
+            learn_rate: f64,
+            allocator: std.mem.Allocator,
+        ) !void {
+            // We want h to be small but not too small to cause float point precision problems.
+            const h: f64 = 0.0001;
+            const original_cost = try self.cost(training_data_batch, allocator);
+
+            for (self.layers) |*layer| {
+                // Calculate the cost gradient for the current weights
+                for (0..layer.num_output_nodes) |node_index| {
+                    for (0..layer.num_input_nodes) |node_in_index| {
+                        // Make a small nudge the weight
+                        layer.weights[(node_index * layer.num_input_nodes) + node_in_index] += h;
+                        // Check how much that nudge causes the cost to change
+                        const delta_cost = try self.cost(training_data_batch, allocator) - original_cost;
+                        // Reset the weight back to its original value
+                        layer.weights[(node_index * layer.num_input_nodes) + node_in_index] -= h;
+                        // Calculate the gradient: change in cost / change in weight (which is h)
+                        layer.costGradientWeights[(node_index * layer.num_input_nodes) + node_in_index] = delta_cost / h;
+                    }
+                }
+
+                // Calculate the cost gradient for the current biases
+                for (0..layer.num_output_nodes) |node_index| {
+                    // Make a small nudge the bias
+                    layer.biases[node_index] += h;
+                    // Check how much that nudge causes the cost to change
+                    const delta_cost = try self.cost(training_data_batch, allocator) - original_cost;
+                    // Reset the bias back to its original value
+                    layer.biases[node_index] -= h;
+                    // Calculate the gradient: change in cost / change in bias (which is h)
+                    layer.costGradientBiases[node_index] = delta_cost / h;
+                }
+            }
+
+            // Gradient descent step: update all weights and biases in the network
+            for (self.layers) |*layer| {
+                layer.applyCostGradients(learn_rate);
             }
         }
 

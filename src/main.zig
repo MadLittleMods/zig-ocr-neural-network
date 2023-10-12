@@ -10,9 +10,10 @@ const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const NUM_OF_IMAGES_TO_TRAIN_ON = 10000; // (max 60k)
 const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
+// The number of times to run through the whole training data set.
 const TRAINING_EPOCHS = 1000;
+const BATCH_SIZE: u32 = 100;
 const LEARN_RATE: f64 = 0.05;
-const BATCH_SIZE: u32 = 32;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -68,30 +69,36 @@ pub fn main() !void {
 
     var neural_network = try neural_networks.NeuralNetwork(DigitDataPoint).init(
         &[_]u32{ 784, 100, digit_labels.len },
-        neural_networks.ActivationFunction{ .relu = .{} },
+        neural_networks.ActivationFunction{
+            .relu = .{},
+            //.sigmoid = .{},
+        },
+        neural_networks.ActivationFunction{ .soft_max = .{} },
         neural_networks.CostFunction{ .mean_squared_error = .{} },
         allocator,
     );
     defer neural_network.deinit(allocator);
 
-    // std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[1].weights});
-    // std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[1].biases});
+    std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[1].weights});
+    std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[1].biases});
 
     var current_epoch_index: usize = 0;
     while (current_epoch_index < TRAINING_EPOCHS) : (current_epoch_index += 1) {
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
-        // the noise can even be beneficial for escaping settle points in the cost
-        // gradient (ridgelines between two valleys). Instead of "gradient descent" with
-        // the full training set, using mini batches is called "stochastic gradient
-        // descent".
+        // the noise can even be beneficial in various ways, like for escaping settle
+        // points in the cost gradient (ridgelines between two valleys).
+        //
+        // Instead of "gradient descent" with the full training set, using mini batches
+        // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
         while (batch_index < NUM_OF_IMAGES_TO_TRAIN_ON / BATCH_SIZE) : (batch_index += 1) {
             const batch_start_index = batch_index * BATCH_SIZE;
             const batch_end_index = batch_start_index + BATCH_SIZE;
             const training_batch = training_data_points[batch_start_index..batch_end_index];
 
+            // try neural_network.learn_estimate(
             try neural_network.learn(
                 training_batch,
                 LEARN_RATE,

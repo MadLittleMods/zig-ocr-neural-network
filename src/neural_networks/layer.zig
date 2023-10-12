@@ -28,12 +28,16 @@ pub const Layer = struct {
     //
     // The weights are stored in row-major order where each row is the incoming
     // connection weights for a single node in this layer.
+    // Size: num_output_nodes * num_input_nodes
     weights: []f64,
     // Bias for each node in the layer (num_output_nodes)
+    // Size: num_output_nodes
     biases: []f64,
     // Store the cost gradients for each weight and bias. These are used to update
     // the weights and biases after each training batch.
+    // Size: num_output_nodes * num_input_nodes
     costGradientWeights: []f64,
+    // Size: num_output_nodes
     costGradientBiases: []f64,
 
     activation_function: ActivationFunction,
@@ -54,7 +58,12 @@ pub const Layer = struct {
         // Initialize the weights
         var weights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
         var biases: []f64 = try allocator.alloc(f64, num_output_nodes);
-        Layer.initializeWeightsAndBiases(weights, biases, num_input_nodes);
+        Layer.initializeWeightsAndBiases(
+            weights,
+            biases,
+            num_input_nodes,
+            activation_function,
+        );
 
         var costGradientWeights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
         var costGradientBiases: []f64 = try allocator.alloc(f64, num_output_nodes);
@@ -90,8 +99,11 @@ pub const Layer = struct {
         weights: []f64,
         biases: []f64,
         num_input_nodes: usize,
+        activation_function: ActivationFunction,
     ) void {
-        var prng = std.rand.DefaultPrng.init(123);
+        // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+        const seed = 123;
+        var prng = std.rand.DefaultPrng.init(seed);
 
         // Initialize the weights of the network to random values
         for (weights) |*weight| {
@@ -114,13 +126,27 @@ pub const Layer = struct {
             // the normal random value by `stddev = sqrt(2 / fan_in)`. This modification
             // is suggested when using the ReLU activation function to achieve a
             // "properly scaled uniform distribution for initialization".
+            //
+            // References:
+            //  - https://machinelearningmastery.com/rectified-linear-activation-function-for-deep-learning-neural-networks/
+            //  - https://prateekvishnu.medium.com/xavier-and-he-normal-he-et-al-initialization-8e3d7a087528
             const desired_mean = 0;
-            const desired_standard_deviation = @sqrt(2.0 / @as(f64, @floatFromInt(num_input_nodes)));
-            weight.* = normal_random_value * desired_standard_deviation + desired_mean;
+            switch (activation_function) {
+                ActivationFunction.relu => {
+                    // He initialization
+                    const desired_standard_deviation = @sqrt(2.0 / @as(f64, @floatFromInt(num_input_nodes)));
+                    weight.* = normal_random_value * desired_standard_deviation + desired_mean;
+                },
+                else => {
+                    // Xavier initialization
+                    const desired_standard_deviation = @sqrt(1.0 / @as(f64, @floatFromInt(num_input_nodes)));
+                    weight.* = normal_random_value * desired_standard_deviation + desired_mean;
+                },
+            }
 
             // Note: there are many different ways of trying to chose a good range for
             // the random weights, and these depend on facors such as the activation
-            // function being used. and howthe inputs to the network have been
+            // function being used. and how the inputs to the network have been
             // scaled/normalized (ideally our input data should be scaled to the range
             // [0, 1]).
             //
@@ -177,9 +203,15 @@ pub const Layer = struct {
                 weighted_input_sum += inputs[node_in_index] * self.getWeight(node_index, node_in_index);
             }
             self.layer_output_data.weighted_input_sums[node_index] = weighted_input_sum;
+        }
 
+        // Apply activation function
+        for (0..self.num_output_nodes) |node_index| {
             // Then calculate the activation of the node
-            outputs[node_index] = self.activation_function.activate(weighted_input_sum);
+            outputs[node_index] = self.activation_function.activate(
+                self.layer_output_data.weighted_input_sums,
+                node_index,
+            );
         }
 
         self.layer_output_data.outputs = outputs;
@@ -211,7 +243,10 @@ pub const Layer = struct {
         for (0..self.num_output_nodes) |node_index| {
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_2/dz_2 = activation_function.derivative(z_2)
-            const activation_derivative = self.activation_function.derivative(self.layer_output_data.weighted_input_sums[node_index]);
+            const activation_derivative = self.activation_function.derivative(
+                self.layer_output_data.weighted_input_sums,
+                node_index,
+            );
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
@@ -254,7 +289,10 @@ pub const Layer = struct {
             }
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_1/dz_1 = activation_function.derivative(z_1)
-            shareable_node_derivative *= self.activation_function.derivative(self.layer_output_data.weighted_input_sums[node_index]);
+            shareable_node_derivative *= self.activation_function.derivative(
+                self.layer_output_data.weighted_input_sums,
+                node_index,
+            );
             shareable_node_derivatives[node_index] = shareable_node_derivative;
         }
         return shareable_node_derivatives;
