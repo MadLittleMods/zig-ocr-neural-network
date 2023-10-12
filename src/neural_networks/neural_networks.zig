@@ -130,7 +130,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             return correct_count / @as(f64, @floatFromInt(testing_data_points.len));
         }
 
-        /// Calculate the cost of the network for a single data point
+        /// Calculate the total cost of the network for a single data point
         pub fn cost_individual_data_point(
             self: *Self,
             data_point: DataPointType,
@@ -139,10 +139,10 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             var outputs = try self.calculateOutputs(data_point.inputs, allocator);
             defer self.freeAfterCalculateOutputs(allocator);
 
-            return self.cost_function.many_cost(outputs, &data_point.expected_outputs);
+            return self.cost_function.total_cost(outputs, &data_point.expected_outputs);
         }
 
-        /// Calculate the average cost of the network for a batch of data points
+        /// Calculate the total cost of the network for a batch of data points
         pub fn cost(
             self: *Self,
             data_points: []const DataPointType,
@@ -154,7 +154,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 // std.log.debug("cost_of_data_point: {d}", .{cost_of_data_point});
                 total_cost += cost_of_data_point;
             }
-            return total_cost / @as(f64, @floatFromInt(data_points.len));
+            return total_cost;
         }
 
         /// Run a single iteration of gradient descent.
@@ -172,8 +172,41 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 try self.updateCostGradients(data_point, allocator);
             }
 
-            // std.log.debug("layer costGradientWeights {d:.3}", .{self.layers[1].costGradientWeights});
-            // std.log.debug("layer costGradientBiases {d:.3}", .{self.layers[1].costGradientBiases});
+            // TODO: Turn off gradient checking once we figure out the difference.
+            // Gradient checking to make sure our back propagration algorithm is working correctly
+            const should_gradient_check = false;
+            if (should_gradient_check) {
+                var test_layer = self.layers[1];
+                // std.log.debug("test_layer costGradientWeights {d:.6}", .{test_layer.costGradientWeights});
+                std.log.debug("test_layer           costGradientBiases {d:.6}", .{test_layer.costGradientBiases});
+
+                const estimated_cost_gradients = try self.estimateCostGradientsForLayer(
+                    &test_layer,
+                    training_data_batch,
+                    allocator,
+                );
+                std.log.debug("test_layer estimated costGradientBiases {d:.6}", .{estimated_cost_gradients.costGradientBiases});
+                const gradient_threshold: f64 = 0.001;
+                for (estimated_cost_gradients.costGradientWeights, 0..) |estimated_weight_cost, cost_index| {
+                    const absolute_difference = @fabs(estimated_weight_cost - test_layer.costGradientWeights[cost_index]);
+                    if (absolute_difference > gradient_threshold) {
+                        std.log.warn("estimated_weight_cost {d} is too different from our cost gradient calculated by our actual back propagation algorithm {d}", .{
+                            estimated_weight_cost,
+                            test_layer.costGradientWeights[cost_index],
+                        });
+                    }
+                }
+                for (estimated_cost_gradients.costGradientBiases, 0..) |estimated_bias_cost, cost_index| {
+                    const actual_bias_cost = test_layer.costGradientWeights[cost_index];
+                    const absolute_difference = @fabs(actual_bias_cost - estimated_bias_cost);
+                    if (absolute_difference > gradient_threshold) {
+                        std.log.warn("estimated_bias_cost {d} is too different from our cost gradient calculated by our actual back propagation algorithm {d}", .{
+                            estimated_bias_cost,
+                            actual_bias_cost,
+                        });
+                    }
+                }
+            }
 
             // Gradient descent step: update all weights and biases in the network
             for (self.layers) |*layer| {
@@ -188,53 +221,62 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             }
         }
 
-        /// Run a single iteration of gradient descent (using the finite-difference method).
+        /// Used for gradient checking
+        ///
         /// This is extremely slow because we have to run the cost function for every weight
         /// and bias in the network against all of the training data points.
         ///
-        /// We can use this to double check that our backpropagation algorithm is working correctly.
-        pub fn learn_estimate(
+        /// Resources:
+        ///  - https://cs231n.github.io/neural-networks-3/#gradcheck
+        ///  - This looks like the naive way (finite-difference) to estimate the slope that
+        ///    Sebastian Lague started off with in his video,
+        ///    https://youtu.be/hfMk-kjRv4c?si=iQohVzk-oFtYldQK&t=937
+        fn estimateCostGradientsForLayer(
             self: *Self,
+            layer: *Layer,
             training_data_batch: []const DataPointType,
-            learn_rate: f64,
             allocator: std.mem.Allocator,
-        ) !void {
+        ) !struct {
+            costGradientWeights: []f64,
+            costGradientBiases: []f64,
+        } {
+            var costGradientWeights: []f64 = try allocator.alloc(f64, layer.num_input_nodes * layer.num_output_nodes);
+            var costGradientBiases: []f64 = try allocator.alloc(f64, layer.num_output_nodes);
+
             // We want h to be small but not too small to cause float point precision problems.
             const h: f64 = 0.0001;
             const original_cost = try self.cost(training_data_batch, allocator);
 
-            for (self.layers) |*layer| {
-                // Calculate the cost gradient for the current weights
-                for (0..layer.num_output_nodes) |node_index| {
-                    for (0..layer.num_input_nodes) |node_in_index| {
-                        // Make a small nudge the weight
-                        layer.weights[(node_index * layer.num_input_nodes) + node_in_index] += h;
-                        // Check how much that nudge causes the cost to change
-                        const delta_cost = try self.cost(training_data_batch, allocator) - original_cost;
-                        // Reset the weight back to its original value
-                        layer.weights[(node_index * layer.num_input_nodes) + node_in_index] -= h;
-                        // Calculate the gradient: change in cost / change in weight (which is h)
-                        layer.costGradientWeights[(node_index * layer.num_input_nodes) + node_in_index] = delta_cost / h;
-                    }
-                }
-
-                // Calculate the cost gradient for the current biases
-                for (0..layer.num_output_nodes) |node_index| {
-                    // Make a small nudge the bias
-                    layer.biases[node_index] += h;
+            // Calculate the cost gradient for the current weights
+            for (0..layer.num_output_nodes) |node_index| {
+                for (0..layer.num_input_nodes) |node_in_index| {
+                    // Make a small nudge the weight
+                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] += h;
                     // Check how much that nudge causes the cost to change
                     const delta_cost = try self.cost(training_data_batch, allocator) - original_cost;
-                    // Reset the bias back to its original value
-                    layer.biases[node_index] -= h;
-                    // Calculate the gradient: change in cost / change in bias (which is h)
-                    layer.costGradientBiases[node_index] = delta_cost / h;
+                    // Reset the weight back to its original value
+                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] -= h;
+                    // Calculate the gradient: change in cost / change in weight (which is h)
+                    costGradientWeights[layer.getFlatWeightIndex(node_index, node_in_index)] = delta_cost / h;
                 }
             }
 
-            // Gradient descent step: update all weights and biases in the network
-            for (self.layers) |*layer| {
-                layer.applyCostGradients(learn_rate);
+            // Calculate the cost gradient for the current biases
+            for (0..layer.num_output_nodes) |node_index| {
+                // Make a small nudge the bias
+                layer.biases[node_index] += h;
+                // Check how much that nudge causes the cost to change
+                const delta_cost = try self.cost(training_data_batch, allocator) - original_cost;
+                // Reset the bias back to its original value
+                layer.biases[node_index] -= h;
+                // Calculate the gradient: change in cost / change in bias (which is h)
+                costGradientBiases[node_index] = delta_cost / h;
             }
+
+            return .{
+                .costGradientWeights = costGradientWeights,
+                .costGradientBiases = costGradientBiases,
+            };
         }
 
         fn updateCostGradients(

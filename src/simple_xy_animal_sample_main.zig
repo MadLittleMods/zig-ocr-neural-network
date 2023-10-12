@@ -118,6 +118,7 @@ pub fn main() !void {
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
         &[_]u32{ 2, 3, 3, animal_labels.len },
         neural_networks.ActivationFunction{ .relu = .{} },
+        neural_networks.ActivationFunction{ .soft_max = .{} },
         neural_networks.CostFunction{ .mean_squared_error = .{} },
         allocator,
     );

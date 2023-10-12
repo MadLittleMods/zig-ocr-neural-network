@@ -41,7 +41,7 @@ pub const Sigmoid = struct {
     }
 
     pub fn derivative(self: @This(), inputs: []const f64, input_index: usize) f64 {
-        const activation_value = Self.activate(self, inputs, input_index);
+        const activation_value = self.activate(inputs, input_index);
         return activation_value * (1.0 - activation_value);
     }
 };

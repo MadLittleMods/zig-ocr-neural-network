@@ -43,6 +43,7 @@ pub const Layer = struct {
     activation_function: ActivationFunction,
     cost_function: ?CostFunction = null,
 
+    // TODO: Maybe we call this `layer_forward_propagation_data` instead?
     layer_output_data: LayerOutputData,
 
     /// Create the layer
@@ -173,8 +174,13 @@ pub const Layer = struct {
 
     /// Helper to access the weight for a specific connection since
     /// the weights are stored in a flat array.
-    fn getWeight(self: *Self, node_index: usize, node_in_index: usize) f64 {
-        return self.weights[(node_index * self.num_input_nodes) + node_in_index];
+    pub fn getWeight(self: *Self, node_index: usize, node_in_index: usize) f64 {
+        const weight_index = self.getFlatWeightIndex(node_index, node_in_index);
+        return self.weights[weight_index];
+    }
+
+    pub fn getFlatWeightIndex(self: *Self, node_index: usize, node_in_index: usize) usize {
+        return (node_index * self.num_input_nodes) + node_in_index;
     }
 
     /// Calculate the output of the layer (forward propagation).
@@ -250,7 +256,7 @@ pub const Layer = struct {
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
-                const cost_derivative = cost_function.individual_derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
+                const cost_derivative = cost_function.derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
                 shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
             } else {
                 @panic(
@@ -300,11 +306,14 @@ pub const Layer = struct {
 
     pub fn updateCostGradients(
         self: *Self,
-        // "shareable_node_derivatives" is just the name given to a set of derivatives calculated for
-        // the type of layer respectively (see `calculateOutputLayerShareableNodeDerivatives(...)` and
-        // `calculateHiddenLayerShareableNodeDerivatives(...)` above). Since those "shareable_node_derivatives" are
-        // shared in the equations for calculating the partial derivative of cost with
-        // respect to both weight and bias we can re-use that work.
+        // "shareable_node_derivatives" is just the name given to a set of derivatives
+        // calculated for the type of layer respectively (see
+        // `calculateOutputLayerShareableNodeDerivatives(...)` and
+        // `calculateHiddenLayerShareableNodeDerivatives(...)` above). Since those
+        // "shareable_node_derivatives" are shared in the equations for calculating the
+        // partial derivative of cost with respect to both weight and bias we can re-use
+        // that work.
+        // Size: num_output_nodes
         shareable_node_derivatives: []const f64,
     ) !void {
         if (shareable_node_derivatives.len != self.num_output_nodes) {
@@ -326,7 +335,7 @@ pub const Layer = struct {
                 // The costGradientWeights array stores these partial derivatives for each weight.
                 // Note: The derivative is being added to the array here because ultimately we want
                 // to calculuate the average gradient across all the data in the training batch
-                self.costGradientWeights[(node_index * self.num_input_nodes) + node_in_index] += derivative_cost_wrt_weight;
+                self.costGradientWeights[self.getFlatWeightIndex(node_index, node_in_index)] += derivative_cost_wrt_weight;
             }
 
             // This is `1` because no matter how much the bias changes, the weighted input will
