@@ -186,7 +186,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // randomly/sparingly during training with a small batch
             //
             // Gradient checking to make sure our back propagration algorithm is working correctly
-            const should_gradient_check = true;
+            const should_gradient_check = false;
             if (should_gradient_check) {
                 try self.sanityCheckCostGradients(training_data_batch, allocator);
             }
@@ -227,12 +227,20 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             defer allocator.free(estimated_cost_gradients.costGradientWeights);
             defer allocator.free(estimated_cost_gradients.costGradientBiases);
 
-            // We use `0.0002` instead of `0.0001` because imagine the ratio is truely
-            // `2` but due to floating point precision, we find the first number with
-            // `1.9999` ratio and the second number with `2.0001` ratio. The
-            // difference between the two ratios is `0.0002` which is greater than
-            // `0.0001` so we would incorrectly think that the ratio is wrong.
-            const ratio_threshold: f64 = 0.0002;
+            // The following threshold guidelines are in relation to the relative error:
+            // |a - b| / max(|a|, |b|) which we are not doing here but thought it would
+            // be useful to leave here for what kind of threshold we should be
+            // tolerating.
+            //
+            // >  - relative error > 1e-2 usually means the gradient is probably wrong
+            // >  - 1e-2 > relative error > 1e-4 should make you feel uncomfortable
+            // >  - 1e-4 > relative error is usually okay for objectives with kinks.
+            // >    But if there are no kinks (e.g. use of tanh nonlinearities and softmax),
+            // >    then 1e-4 is too high.
+            // >  - 1e-7 and less you should be happy.
+            // >
+            // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
+            const ratio_threshold: f64 = 0.0001;
             var found_estimated_to_actual_cost_gradient_ratio: f64 = 0;
 
             var has_flawed_weight_cost_gradient: bool = false;
@@ -320,7 +328,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 return error.UnableToFindEstimatedToActualWeightRatio;
             } else if (found_estimated_to_actual_cost_gradient_ratio != 1) {
                 // This is just a warning because I don't think it affects the direction
-                std.log.warn("The (estimated / actual) cost gradient ratio is {d} " ++
+                std.log.warn("The first (estimated / actual) cost gradient ratio we found is {d} " ++
                     "(should be ~1 which means the estimated and actual match) " ++
                     "which means our actual calculated cost is some multiple of the true weight gradient. " ++
                     "This doesn't affect the direction of the gradient (or probably accuracy of the descent " ++
@@ -339,7 +347,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
 
             if (has_flawed_weight_cost_gradient or has_flawed_bias_cost_gradient) {
                 std.log.err("The actual cost gradient does not match our estimated cost gradient " ++
-                    "(flawed weight cost gradient: {}, flawed bias cost gradient: {})" ++
+                    "(flawed weight cost gradient: {}, flawed bias cost gradient: {}) " ++
+                    " which means our backpropagation algorithm is probably wrong." ++
                     "\n    Estimated weight gradient: {d:.6}" ++
                     "\n       Actual weight gradient: {d:.6}" ++
                     "\n    Estimated bias gradient: {d:.6}" ++
@@ -385,6 +394,13 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // Calculate the cost gradient for the current weights.
             // We're using the the centered difference formula for better accuracy: (f(x + h) - f(x - h)) / 2h
             // The normal finite difference formula has less accuracy: (f(x + h) - f(x)) / h
+            //
+            // We need to be aware of kinks in the objective introduced by activation
+            // functions like ReLU. Imagine our weight is just below 0 on the x-axis and
+            // we nudge the weight just above 0, we would estimate some value when the
+            // actual value is 0 (with ReLU(x), any x <= 0 will result in 0). Ideally,
+            // we should have some leniency during the gradient check as it's expected
+            // that our estimated gradient will not match our actual gradient exactly.
             for (0..layer.num_output_nodes) |node_index| {
                 for (0..layer.num_input_nodes) |node_in_index| {
                     // Make a small nudge the weight in the positive direction (+ h)
