@@ -132,7 +132,7 @@ pub fn main() !void {
             allocator,
         );
 
-        const cost = try neural_network.cost(&animal_training_data_points, allocator);
+        const cost = try neural_network.cost_many(&animal_training_data_points, allocator);
         const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
             &animal_testing_data_points,
             allocator,

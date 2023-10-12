@@ -108,7 +108,7 @@ pub fn main() !void {
             // std.log.debug("layer weights {d:.3}", .{neural_network.layers[1].weights});
             // std.log.debug("layer biases {d:.3}", .{neural_network.layers[1].biases});
 
-            const cost = try neural_network.cost(testing_data_points, allocator);
+            const cost = try neural_network.cost_many(testing_data_points, allocator);
             const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
                 testing_data_points,
                 allocator,
