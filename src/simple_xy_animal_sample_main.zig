@@ -2,6 +2,7 @@ const std = @import("std");
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig").graphNeuralNetwork;
+const time_utils = @import("utils/time_utils.zig");
 
 const TRAINING_EPOCHS = 2000;
 const BATCH_SIZE: u32 = 10;
@@ -152,6 +153,8 @@ pub fn main() !void {
         }
     }
 
+    const start_timestamp_seconds = std.time.timestamp();
+
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
         &[_]u32{ 2, 10, 10, animal_labels.len },
         neural_networks.ActivationFunction{
@@ -182,35 +185,47 @@ pub fn main() !void {
             const batch_end_index = batch_start_index + BATCH_SIZE;
             const training_batch = animal_training_data_points[batch_start_index..batch_end_index];
             try neural_network.learn(
-                &training_batch,
+                training_batch,
                 LEARN_RATE,
                 allocator,
             );
 
-            if (current_epoch_iteration_count % 100 == 0 and current_epoch_iteration_count != 0) {
-                const cost = try neural_network.cost_many(&training_batch, allocator);
+            if (current_epoch_iteration_count % 1000 == 0 and
+                current_epoch_iteration_count != 0 and
+                batch_index == 0)
+            {
+                const current_timestamp_seconds = std.time.timestamp();
+                const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
+                const duration_string = try time_utils.formatDuration(
+                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
+                    allocator,
+                );
+                defer allocator.free(duration_string);
+
+                const cost = try neural_network.cost_many(training_batch, allocator);
                 const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
                     &animal_testing_data_points,
                     allocator,
                 );
-                std.log.debug("epoch {d: <4} batch {d: <4} -> cost {d}, acccuracy with testing points {d}", .{
+                std.log.debug("epoch {d: <5} batch {d: <2} {s: >8} -> cost {d}, acccuracy with testing points {d}", .{
                     current_epoch_iteration_count,
                     batch_index,
+                    duration_string,
                     cost,
                     accuracy,
                 });
             }
+        }
 
-            // Graph how the neural network is learning over time.
-            if (current_epoch_iteration_count % 2000 == 0 and current_epoch_iteration_count != 0) {
-                try graphNeuralNetwork(
-                    AnimalDataPoint,
-                    &neural_network,
-                    &animal_training_data_points,
-                    &animal_testing_data_points,
-                    allocator,
-                );
-            }
+        // Graph how the neural network is learning over time.
+        if (current_epoch_iteration_count % 10000 == 0 and current_epoch_iteration_count != 0) {
+            try graphNeuralNetwork(
+                AnimalDataPoint,
+                &neural_network,
+                &animal_training_data_points,
+                &animal_testing_data_points,
+                allocator,
+            );
         }
     }
 
