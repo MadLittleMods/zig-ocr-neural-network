@@ -156,7 +156,7 @@ pub fn main() !void {
     const start_timestamp_seconds = std.time.timestamp();
 
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
-        &[_]u32{ 2, 10, 10, animal_labels.len },
+        &[_]u32{ 2, 3, 3, animal_labels.len },
         neural_networks.ActivationFunction{
             // .relu = .{},
             .sigmoid = .{},
@@ -207,7 +207,7 @@ pub fn main() !void {
                     &animal_testing_data_points,
                     allocator,
                 );
-                std.log.debug("epoch {d: <5} batch {d: <2} {s: >8} -> cost {d}, acccuracy with testing points {d}", .{
+                std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, acccuracy with testing points {d}", .{
                     current_epoch_iteration_count,
                     batch_index,
                     duration_string,
