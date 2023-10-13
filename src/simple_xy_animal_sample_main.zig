@@ -196,6 +196,7 @@ pub fn main() !void {
             {
                 const current_timestamp_seconds = std.time.timestamp();
                 const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
+                std.log.debug("runtime_duration_seconds {d}", .{runtime_duration_seconds});
                 const duration_string = try time_utils.formatDuration(
                     runtime_duration_seconds * time_utils.ONE_SECOND_MS,
                     allocator,
