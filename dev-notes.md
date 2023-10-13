@@ -142,7 +142,7 @@ Libraries for linear algebra stuff (working with vectors, matrices).
 
 Export data from tables in Desmos (run the snippet in the JavaScript developer tools console)
 
-Example: https://www.desmos.com/calculator/r1hhwpoxeq
+Example: https://www.desmos.com/calculator/tkfacez5wt
 
 ```js
 state = Calc.getState()
