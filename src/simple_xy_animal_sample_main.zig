@@ -156,10 +156,11 @@ pub fn main() !void {
     const start_timestamp_seconds = std.time.timestamp();
 
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
-        &[_]u32{ 2, 3, 3, animal_labels.len },
+        &[_]u32{ 2, 10, 10, animal_labels.len },
         neural_networks.ActivationFunction{
             // .relu = .{},
-            .sigmoid = .{},
+            .leaky_relu = .{},
+            //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
         neural_networks.CostFunction{ .mean_squared_error = .{} },
