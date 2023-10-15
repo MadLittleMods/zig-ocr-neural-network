@@ -13,8 +13,8 @@ const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
 // The number of times to run through the whole training data set.
 const TRAINING_EPOCHS = 1000;
-const BATCH_SIZE: u32 = 32;
-const LEARN_RATE: f64 = 0.1;
+const BATCH_SIZE: u32 = 100;
+const LEARN_RATE: f64 = 0.05;
 const MOMENTUM = 0.9;
 
 pub fn main() !void {
@@ -79,7 +79,10 @@ pub fn main() !void {
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
-        neural_networks.CostFunction{ .mean_squared_error = .{} },
+        neural_networks.CostFunction{
+            //.mean_squared_error = .{},
+            .cross_entropy = .{},
+        },
         allocator,
     );
     defer neural_network.deinit(allocator);

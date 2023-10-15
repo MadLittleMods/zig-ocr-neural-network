@@ -166,7 +166,10 @@ pub fn main() !void {
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
-        neural_networks.CostFunction{ .mean_squared_error = .{} },
+        neural_networks.CostFunction{
+            //.mean_squared_error = .{},
+            .cross_entropy = .{},
+        },
         allocator,
     );
     defer neural_network.deinit(allocator);
