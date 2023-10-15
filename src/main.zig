@@ -104,6 +104,7 @@ pub fn main() !void {
         // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
         while (batch_index < NUM_OF_IMAGES_TO_TRAIN_ON / BATCH_SIZE) : (batch_index += 1) {
+            // TODO: Shuffle the data after each epoch
             const batch_start_index = batch_index * BATCH_SIZE;
             const batch_end_index = batch_start_index + BATCH_SIZE;
             const training_batch = training_data_points[batch_start_index..batch_end_index];

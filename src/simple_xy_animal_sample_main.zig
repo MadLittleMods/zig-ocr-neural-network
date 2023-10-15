@@ -5,7 +5,8 @@ const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig
 const time_utils = @import("utils/time_utils.zig");
 
 const TRAINING_EPOCHS = 2000;
-const BATCH_SIZE: u32 = 10;
+// TODO: Set this back to 10 after figuring out cost problems
+const BATCH_SIZE: u32 = 1;
 const LEARN_RATE: f64 = 0.1;
 // Since this problem space doesn't have much curvature, momentum tends to hurt us more
 // with higher values.
@@ -22,7 +23,12 @@ const MOMENTUM = 0.3;
 // neural network over every pixel in the graph to visualize the boundary that the
 // networks weights and biases is making. See https://youtu.be/hfMk-kjRv4c?t=311 for
 // reference.
-const animal_labels = [_][]const u8{ "fish", "goat" };
+const animal_labels = [_][]const u8{
+    "fish",
+    "goat",
+    // TODO: Remove this third label (just testing what goes wrong)
+    "TODO: Remove me",
+};
 const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 // Graph of animal data points:
 // https://www.desmos.com/calculator/tkfacez5wt
@@ -159,13 +165,21 @@ pub fn main() !void {
     const start_timestamp_seconds = std.time.timestamp();
 
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
-        &[_]u32{ 2, 10, 10, animal_labels.len },
+        &[_]u32{
+            2,
+            // TODO: set this back to 10, 10
+            //10, 10,
+            animal_labels.len,
+        },
         neural_networks.ActivationFunction{
             // .relu = .{},
             .leaky_relu = .{},
             //.sigmoid = .{},
         },
-        neural_networks.ActivationFunction{ .soft_max = .{} },
+        neural_networks.ActivationFunction{
+            //.soft_max = .{}
+            .sigmoid = .{},
+        },
         neural_networks.CostFunction{
             //.mean_squared_error = .{},
             .cross_entropy = .{},
@@ -173,6 +187,10 @@ pub fn main() !void {
         allocator,
     );
     defer neural_network.deinit(allocator);
+
+    const test_layer_index = neural_network.layers.len - 1;
+    std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[test_layer_index].weights});
+    std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[test_layer_index].biases});
 
     var current_epoch_iteration_count: usize = 0;
     while (true
@@ -188,6 +206,7 @@ pub fn main() !void {
         // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
         while (batch_index < animal_training_data_points.len / BATCH_SIZE) : (batch_index += 1) {
+            // TODO: Shuffle the data after each epoch
             const batch_start_index = batch_index * BATCH_SIZE;
             const batch_end_index = batch_start_index + BATCH_SIZE;
             const training_batch = animal_training_data_points[batch_start_index..batch_end_index];
@@ -198,31 +217,32 @@ pub fn main() !void {
                 allocator,
             );
 
-            if (current_epoch_iteration_count % 1000 == 0 and
-                current_epoch_iteration_count != 0 and
-                batch_index == 0)
-            {
-                const current_timestamp_seconds = std.time.timestamp();
-                const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
-                const duration_string = try time_utils.formatDuration(
-                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
-                    allocator,
-                );
-                defer allocator.free(duration_string);
+            // if (current_epoch_iteration_count % 1000 == 0 and
+            //     current_epoch_iteration_count != 0 and
+            //     batch_index == 0)
+            // {
+            const current_timestamp_seconds = std.time.timestamp();
+            const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
+            // TODO: Looks like we could use `std.fmt.fmtDuration(ns: u64)` instead of our custom thing
+            const duration_string = try time_utils.formatDuration(
+                runtime_duration_seconds * time_utils.ONE_SECOND_MS,
+                allocator,
+            );
+            defer allocator.free(duration_string);
 
-                const cost = try neural_network.cost_many(training_batch, allocator);
-                const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
-                    &animal_testing_data_points,
-                    allocator,
-                );
-                std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, acccuracy with testing points {d}", .{
-                    current_epoch_iteration_count,
-                    batch_index,
-                    duration_string,
-                    cost,
-                    accuracy,
-                });
-            }
+            const cost = try neural_network.cost_many(training_batch, allocator);
+            const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
+                &animal_testing_data_points,
+                allocator,
+            );
+            std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, acccuracy with testing points {d}", .{
+                current_epoch_iteration_count,
+                batch_index,
+                duration_string,
+                cost,
+                accuracy,
+            });
+            // }
         }
 
         // Graph how the neural network is learning over time.
