@@ -2,6 +2,7 @@ const std = @import("std");
 const mnist_data_utils = @import("mnist/mnist_data_utils.zig");
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
+const time_utils = @import("utils/time_utils.zig");
 
 // Adjust as necessary. To make the program run faster, you can reduce the number of
 // images to train on and test on. To make the program more accurate, you can increase
@@ -12,8 +13,9 @@ const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
 // The number of times to run through the whole training data set.
 const TRAINING_EPOCHS = 1000;
-const BATCH_SIZE: u32 = 100;
-const LEARN_RATE: f64 = 0.05;
+const BATCH_SIZE: u32 = 32;
+const LEARN_RATE: f64 = 0.1;
+const MOMENTUM = 0.9;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -24,6 +26,8 @@ pub fn main() !void {
             .leak => std.log.err("GPA allocator: Memory leak detected", .{}),
         }
     }
+
+    const start_timestamp_seconds = std.time.timestamp();
 
     // Read the MNIST data from the filesystem and normalize it.
     const raw_mnist_data = try mnist_data_utils.getMnistData(allocator, .{
@@ -70,7 +74,8 @@ pub fn main() !void {
     var neural_network = try neural_networks.NeuralNetwork(DigitDataPoint).init(
         &[_]u32{ 784, 100, digit_labels.len },
         neural_networks.ActivationFunction{
-            .relu = .{},
+            // .relu = .{},
+            .leaky_relu = .{},
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
@@ -83,7 +88,9 @@ pub fn main() !void {
     std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[1].biases});
 
     var current_epoch_index: usize = 0;
-    while (current_epoch_index < TRAINING_EPOCHS) : (current_epoch_index += 1) {
+    while (true
+    // current_epoch_index < TRAINING_EPOCHS
+    ) : (current_epoch_index += 1) {
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
@@ -102,23 +109,38 @@ pub fn main() !void {
             try neural_network.learn(
                 training_batch,
                 LEARN_RATE,
+                MOMENTUM,
                 allocator,
             );
 
             // std.log.debug("layer weights {d:.3}", .{neural_network.layers[1].weights});
             // std.log.debug("layer biases {d:.3}", .{neural_network.layers[1].biases});
 
-            const cost = try neural_network.cost_many(testing_data_points, allocator);
-            const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
-                testing_data_points,
-                allocator,
-            );
-            std.log.debug("epoch {d: <3} batch {d: <3} -> cost {d}, acccuracy {d}", .{
-                current_epoch_index,
-                batch_index,
-                cost,
-                accuracy,
-            });
+            if (current_epoch_index % 1 == 0 and
+                current_epoch_index != 0 and
+                batch_index == 0)
+            {
+                const current_timestamp_seconds = std.time.timestamp();
+                const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
+                const duration_string = try time_utils.formatDuration(
+                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
+                    allocator,
+                );
+                defer allocator.free(duration_string);
+
+                const cost = try neural_network.cost_many(testing_data_points, allocator);
+                const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
+                    testing_data_points,
+                    allocator,
+                );
+                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, acccuracy with test points {d}", .{
+                    current_epoch_index,
+                    batch_index,
+                    duration_string,
+                    cost,
+                    accuracy,
+                });
+            }
         }
     }
 }

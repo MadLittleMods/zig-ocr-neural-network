@@ -173,6 +173,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             self: *Self,
             training_data_batch: []const DataPointType,
             learn_rate: f64,
+            /// See the comment in `Layer.updateCostGradients()` for more info
+            momentum: f64,
             allocator: std.mem.Allocator,
         ) !void {
             // Use the backpropagation algorithm to calculate the gradient of the cost function
@@ -196,10 +198,11 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 layer.applyCostGradients(
                     // Because we summed the gradients from all of the training data points,
                     // we need to average out all of gradients that we added together. Since
-                    // we end up multiplying the gradient values by the learnRate, we can
+                    // we end up multiplying the gradient values by the learn_rate, we can
                     // just divide it by the number of training data points to get the
                     // average gradient.
                     learn_rate / @as(f64, @floatFromInt(training_data_batch.len)),
+                    momentum,
                 );
             }
         }
@@ -216,16 +219,16 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             allocator: std.mem.Allocator,
         ) !void {
             var test_layer = self.layers[self.layers.len - 1];
-            // std.log.debug("Weight: test_layer costGradientWeights {d:.6}", .{test_layer.costGradientWeights});
-            // std.log.debug("Bias: test_layer costGradientBiases {d:.6}", .{test_layer.costGradientBiases});
+            // std.log.debug("Weight: test_layer cost_gradient_weights {d:.6}", .{test_layer.cost_gradient_weights});
+            // std.log.debug("Bias: test_layer cost_gradient_biases {d:.6}", .{test_layer.cost_gradient_biases});
 
             const estimated_cost_gradients = try self.estimateCostGradientsForLayer(
                 &test_layer,
                 training_data_batch,
                 allocator,
             );
-            defer allocator.free(estimated_cost_gradients.costGradientWeights);
-            defer allocator.free(estimated_cost_gradients.costGradientBiases);
+            defer allocator.free(estimated_cost_gradients.cost_gradient_weights);
+            defer allocator.free(estimated_cost_gradients.cost_gradient_biases);
 
             // The following threshold guidelines are in relation to the relative error:
             // |a - b| / max(|a|, |b|) which we are not doing here but thought it would
@@ -244,8 +247,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             var found_estimated_to_actual_cost_gradient_ratio: f64 = 0;
 
             var has_flawed_weight_cost_gradient: bool = false;
-            for (estimated_cost_gradients.costGradientWeights, 0..) |estimated_weight_cost, cost_index| {
-                const actual_weight_cost = test_layer.costGradientWeights[cost_index];
+            for (estimated_cost_gradients.cost_gradient_weights, 0..) |estimated_weight_cost, cost_index| {
+                const actual_weight_cost = test_layer.cost_gradient_weights[cost_index];
 
                 // We have this check to watch out for divide by zero
                 if (estimated_weight_cost != 0 and actual_weight_cost != 0) {
@@ -278,8 +281,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             }
 
             var has_flawed_bias_cost_gradient: bool = false;
-            for (estimated_cost_gradients.costGradientBiases, 0..) |estimated_bias_cost, cost_index| {
-                const actual_bias_cost = test_layer.costGradientBiases[cost_index];
+            for (estimated_cost_gradients.cost_gradient_biases, 0..) |estimated_bias_cost, cost_index| {
+                const actual_bias_cost = test_layer.cost_gradient_biases[cost_index];
 
                 // We have this check to watch out for divide by zero
                 if (estimated_bias_cost != 0 and actual_bias_cost != 0) {
@@ -320,10 +323,10 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     "\n       Actual weight gradient: {d:.6}" ++
                     "\n    Estimated bias gradient: {d:.6}" ++
                     "\n       Actual bias gradient: {d:.6}", .{
-                    estimated_cost_gradients.costGradientWeights,
-                    test_layer.costGradientWeights,
-                    estimated_cost_gradients.costGradientBiases,
-                    test_layer.costGradientBiases,
+                    estimated_cost_gradients.cost_gradient_weights,
+                    test_layer.cost_gradient_weights,
+                    estimated_cost_gradients.cost_gradient_biases,
+                    test_layer.cost_gradient_biases,
                 });
                 return error.UnableToFindEstimatedToActualWeightRatio;
             } else if (found_estimated_to_actual_cost_gradient_ratio != 1) {
@@ -338,10 +341,10 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     "\n    Estimated bias gradient: {d:.6}" ++
                     "\n       Actual bias gradient: {d:.6}", .{
                     found_estimated_to_actual_cost_gradient_ratio,
-                    estimated_cost_gradients.costGradientWeights,
-                    test_layer.costGradientWeights,
-                    estimated_cost_gradients.costGradientBiases,
-                    test_layer.costGradientBiases,
+                    estimated_cost_gradients.cost_gradient_weights,
+                    test_layer.cost_gradient_weights,
+                    estimated_cost_gradients.cost_gradient_biases,
+                    test_layer.cost_gradient_biases,
                 });
             }
 
@@ -355,10 +358,10 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     "\n       Actual bias gradient: {d:.6}", .{
                     has_flawed_weight_cost_gradient,
                     has_flawed_bias_cost_gradient,
-                    estimated_cost_gradients.costGradientWeights,
-                    test_layer.costGradientWeights,
-                    estimated_cost_gradients.costGradientBiases,
-                    test_layer.costGradientBiases,
+                    estimated_cost_gradients.cost_gradient_weights,
+                    test_layer.cost_gradient_weights,
+                    estimated_cost_gradients.cost_gradient_biases,
+                    test_layer.cost_gradient_biases,
                 });
                 return error.FlawedCostGradients;
             }
@@ -380,11 +383,11 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             training_data_batch: []const DataPointType,
             allocator: std.mem.Allocator,
         ) !struct {
-            costGradientWeights: []f64,
-            costGradientBiases: []f64,
+            cost_gradient_weights: []f64,
+            cost_gradient_biases: []f64,
         } {
-            var costGradientWeights: []f64 = try allocator.alloc(f64, layer.num_input_nodes * layer.num_output_nodes);
-            var costGradientBiases: []f64 = try allocator.alloc(f64, layer.num_output_nodes);
+            var cost_gradient_weights: []f64 = try allocator.alloc(f64, layer.num_input_nodes * layer.num_output_nodes);
+            var cost_gradient_biases: []f64 = try allocator.alloc(f64, layer.num_output_nodes);
 
             // We want h to be small but not too small to cause float point precision problems.
             const h: f64 = 0.0001;
@@ -422,7 +425,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] += h;
 
                     // Calculate the gradient: change in cost / change in weight (which is h)
-                    costGradientWeights[layer.getFlatWeightIndex(node_index, node_in_index)] = delta_cost / (2 * h);
+                    cost_gradient_weights[layer.getFlatWeightIndex(node_index, node_in_index)] = delta_cost / (2 * h);
                 }
             }
 
@@ -447,12 +450,12 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 layer.biases[node_index] += h;
 
                 // Calculate the gradient: change in cost / change in bias (which is h)
-                costGradientBiases[node_index] = delta_cost / (2 * h);
+                cost_gradient_biases[node_index] = delta_cost / (2 * h);
             }
 
             return .{
-                .costGradientWeights = costGradientWeights,
-                .costGradientBiases = costGradientBiases,
+                .cost_gradient_weights = cost_gradient_weights,
+                .cost_gradient_biases = cost_gradient_biases,
             };
         }
 

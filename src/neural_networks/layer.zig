@@ -35,10 +35,24 @@ pub const Layer = struct {
     biases: []f64,
     // Store the cost gradients for each weight and bias. These are used to update
     // the weights and biases after each training batch.
+    //
+    // The partial derivative of the cost function with respect to the weight of the
+    // current connection.
+    //
     // Size: num_output_nodes * num_input_nodes
-    costGradientWeights: []f64,
+    cost_gradient_weights: []f64,
+    // The partial derivative of the cost function with respect to the bias of the
+    // current node.
+    //
     // Size: num_output_nodes
-    costGradientBiases: []f64,
+    cost_gradient_biases: []f64,
+
+    // Used for adding momentum to gradient descent. Stores the change in weight/bias
+    // from the previous learning iteration.
+    // Size: num_output_nodes * num_input_nodes
+    weight_velocities: []f64,
+    // Size: num_output_nodes
+    bias_velocities: []f64,
 
     activation_function: ActivationFunction,
     cost_function: ?CostFunction = null,
@@ -66,8 +80,11 @@ pub const Layer = struct {
             activation_function,
         );
 
-        var costGradientWeights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
-        var costGradientBiases: []f64 = try allocator.alloc(f64, num_output_nodes);
+        var cost_gradient_weights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
+        var cost_gradient_biases: []f64 = try allocator.alloc(f64, num_output_nodes);
+
+        var weight_velocities: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
+        var bias_velocities: []f64 = try allocator.alloc(f64, num_output_nodes);
 
         var weighted_input_sums = try allocator.alloc(f64, num_output_nodes);
 
@@ -76,8 +93,10 @@ pub const Layer = struct {
             .num_output_nodes = num_output_nodes,
             .weights = weights,
             .biases = biases,
-            .costGradientWeights = costGradientWeights,
-            .costGradientBiases = costGradientBiases,
+            .cost_gradient_weights = cost_gradient_weights,
+            .cost_gradient_biases = cost_gradient_biases,
+            .weight_velocities = weight_velocities,
+            .bias_velocities = bias_velocities,
             .activation_function = activation_function,
             .cost_function = options.cost_function,
             .layer_output_data = .{
@@ -91,8 +110,10 @@ pub const Layer = struct {
     pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
         allocator.free(self.weights);
         allocator.free(self.biases);
-        allocator.free(self.costGradientWeights);
-        allocator.free(self.costGradientBiases);
+        allocator.free(self.cost_gradient_weights);
+        allocator.free(self.cost_gradient_biases);
+        allocator.free(self.weight_velocities);
+        allocator.free(self.bias_velocities);
         allocator.free(self.layer_output_data.weighted_input_sums);
     }
 
@@ -332,10 +353,10 @@ pub const Layer = struct {
                 // Evaluate the partial derivative of cost with respect to the weight of the current connection
                 // dc/dw_2 = dz_2/dw_2 * shareable_node_derivatives[node_index]
                 const derivative_cost_wrt_weight = derivative_weighted_input_wrt_weight * shareable_node_derivatives[node_index];
-                // The costGradientWeights array stores these partial derivatives for each weight.
+                // The cost_gradient_weights array stores these partial derivatives for each weight.
                 // Note: The derivative is being added to the array here because ultimately we want
                 // to calculuate the average gradient across all the data in the training batch
-                self.costGradientWeights[self.getFlatWeightIndex(node_index, node_in_index)] += derivative_cost_wrt_weight;
+                self.cost_gradient_weights[self.getFlatWeightIndex(node_index, node_in_index)] += derivative_cost_wrt_weight;
             }
 
             // This is `1` because no matter how much the bias changes, the weighted input will
@@ -345,23 +366,58 @@ pub const Layer = struct {
             // Evaluate the partial derivative of cost with respect to bias of the current node.
             // dc/db_2 = dz_2/db_2 * shareable_node_derivatives[node_index]
             const derivative_cost_wrt_bias = derivative_weighted_input_wrt_bias * shareable_node_derivatives[node_index];
-            self.costGradientBiases[node_index] += derivative_cost_wrt_bias;
+            self.cost_gradient_biases[node_index] += derivative_cost_wrt_bias;
         }
     }
 
     /// Update the weights and biases based on the cost gradients (gradient descent).
     /// Also resets the gradients back to zero.
-    pub fn applyCostGradients(self: *Self, learnRate: f64) void {
+    pub fn applyCostGradients(
+        self: *Self,
+        learn_rate: f64,
+        // The momentum to apply to gradient descent. This is a value between 0 and 1
+        // and often has a value close to 1.0, such as 0.8, 0.9, or 0.99. A momentum of
+        // 0.0 is the same as gradient descent without momentum.
+        //
+        // Momentum is used to help the gradient descent algorithm keep the learning
+        // process going in the right direction between different batches. It does this
+        // by adding a fraction of the previous weight change to the current weight
+        // change. Essentially, if it was moving before, it will keep moving in the same
+        // direction. It's most useful in situations where the cost surface has lots of
+        // curvature (changes a lot) ("highly non-spherical") or when the cost surface
+        // "flat or nearly flat, e.g. zero gradient. The momentum allows the search to
+        // progress in the same direction as before the flat spot and helpfully cross
+        // the flat region."
+        // (https://machinelearningmastery.com/gradient-descent-with-momentum-from-scratch/)
+        //
+        // > The momentum algorithm accumulates an exponentially decaying moving average
+        // > of past gradients and continues to move in their direction.
+        // >
+        // > -- *Deep Learning* book page 296 (Ian Goodfellow)
+        momentum: f64,
+    ) void {
         for (self.weights, 0..) |*weight, weight_index| {
-            weight.* -= learnRate * self.costGradientWeights[weight_index];
+            const velocity = (learn_rate * self.cost_gradient_weights[weight_index]) +
+                (momentum * self.weight_velocities[weight_index]);
+            // Store the velocity for use in the next iteration
+            self.weight_velocities[weight_index] = velocity;
+
+            // Update the weight
+            weight.* -= velocity;
             // Reset the gradient back to zero now that we've applied it
-            self.costGradientWeights[weight_index] = 0;
+            self.cost_gradient_weights[weight_index] = 0;
         }
 
         for (self.biases, 0..) |*bias, bias_index| {
-            bias.* -= learnRate * self.costGradientBiases[bias_index];
+            const velocity = (learn_rate * self.cost_gradient_biases[bias_index]) +
+                (momentum * self.bias_velocities[bias_index]);
+            // Store the velocity for use in the next iteration
+            self.bias_velocities[bias_index] = velocity;
+
+            // Update the bias
+            bias.* -= velocity;
             // Reset the gradient back to zero now that we've applied it
-            self.costGradientBiases[bias_index] = 0;
+            self.cost_gradient_biases[bias_index] = 0;
         }
     }
 };

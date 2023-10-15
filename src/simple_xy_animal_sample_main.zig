@@ -7,6 +7,9 @@ const time_utils = @import("utils/time_utils.zig");
 const TRAINING_EPOCHS = 2000;
 const BATCH_SIZE: u32 = 10;
 const LEARN_RATE: f64 = 0.1;
+// Since this problem space doesn't have much curvature, momentum tends to hurt us more
+// with higher values.
+const MOMENTUM = 0.3;
 
 // This is a small testing dataset (to make sure our code is working) with only 2
 // arbitrary features (x and y) where the labeled data points (fish and goat) occupy
@@ -188,6 +191,7 @@ pub fn main() !void {
             try neural_network.learn(
                 training_batch,
                 LEARN_RATE,
+                MOMENTUM,
                 allocator,
             );
 
@@ -197,7 +201,6 @@ pub fn main() !void {
             {
                 const current_timestamp_seconds = std.time.timestamp();
                 const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
-                std.log.debug("runtime_duration_seconds {d}", .{runtime_duration_seconds});
                 const duration_string = try time_utils.formatDuration(
                     runtime_duration_seconds * time_utils.ONE_SECOND_MS,
                     allocator,
