@@ -33,14 +33,19 @@ gunzip *.gz
 Tested with Zig 0.11.0
 
 ```sh
-$ zig build run
-...
+$ zig build run-mnist_ocr
 ```
 
 To run a basic graphable dataset example, you can use the `simple_xy_animal_sample_main.zig`:
 
 ```sh
-$ zig run src/simple_xy_animal_sample_main.zig
+$ zig build run-simple_xy_animal_sample
+```
+
+## Testing
+
+```sh
+$ zig build test --summary all
 ```
 
 ## Dev notes
