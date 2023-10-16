@@ -214,7 +214,7 @@ pub fn main() !void {
                 allocator,
             );
 
-            if (current_epoch_iteration_count % 1000 == 0 and
+            if (current_epoch_iteration_count % 10 == 0 and
                 current_epoch_iteration_count != 0 and
                 batch_index == 0)
             {
@@ -226,7 +226,7 @@ pub fn main() !void {
                 );
                 defer allocator.free(duration_string);
 
-                const cost = try neural_network.cost_many(training_batch, allocator);
+                const cost = try neural_network.cost_many(&animal_testing_data_points, allocator);
                 const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
                     &animal_testing_data_points,
                     allocator,

@@ -1,5 +1,6 @@
 const std = @import("std");
 const mnist_data_utils = @import("mnist/mnist_data_utils.zig");
+const data_set_helper = @import("neural_networks/data_set_helper.zig");
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const time_utils = @import("utils/time_utils.zig");
@@ -90,10 +91,18 @@ pub fn main() !void {
     std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[1].weights});
     std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[1].biases});
 
+    // Instead of shuffling the data itself, we just shuffle a list of indices into the
+    // data and then use them to assemble a batch.
+    var training_data_lookup_indices = try data_set_helper.createLookupIndices(training_data_points.len, allocator);
+    defer allocator.free(training_data_lookup_indices);
+
     var current_epoch_index: usize = 0;
     while (true
     // current_epoch_index < TRAINING_EPOCHS
     ) : (current_epoch_index += 1) {
+        // Shuffle the indices into the data after each epoch
+        data_set_helper.shuffleLookupIndicesInPlace(training_data_lookup_indices);
+
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
@@ -104,9 +113,15 @@ pub fn main() !void {
         // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
         while (batch_index < NUM_OF_IMAGES_TO_TRAIN_ON / BATCH_SIZE) : (batch_index += 1) {
-            const batch_start_index = batch_index * BATCH_SIZE;
-            const batch_end_index = batch_start_index + BATCH_SIZE;
-            const training_batch = training_data_points[batch_start_index..batch_end_index];
+            const training_batch = try data_set_helper.assembleShuffledBatch(
+                DigitDataPoint,
+                training_data_points,
+                training_data_lookup_indices,
+                batch_index,
+                BATCH_SIZE,
+                allocator,
+            );
+            defer allocator.free(training_batch);
 
             // try neural_network.learn_estimate(
             try neural_network.learn(
