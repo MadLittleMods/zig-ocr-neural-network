@@ -63,7 +63,6 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             inputs: []const f64,
             allocator: std.mem.Allocator,
         ) ![]const f64 {
-            std.log.debug("calculateOutputs", .{});
             var inputs_to_next_layer = inputs;
             for (self.layers) |*layer| {
                 inputs_to_next_layer = try layer.calculateOutputs(inputs_to_next_layer, allocator);
@@ -140,7 +139,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             var outputs = try self.calculateOutputs(data_point.inputs, allocator);
             defer self.freeAfterCalculateOutputs(allocator);
 
-            return self.cost_function.cost(outputs, &data_point.expected_outputs);
+            return self.cost_function.vector_cost(outputs, &data_point.expected_outputs);
         }
 
         /// Calculate the total cost of the network for a batch of data points
@@ -159,7 +158,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         }
 
         /// Calculate the average cost of the network for a batch of data points
-        pub fn average_cost(
+        pub fn cost_average(
             self: *Self,
             data_points: []const DataPointType,
             allocator: std.mem.Allocator,
@@ -178,7 +177,6 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             momentum: f64,
             allocator: std.mem.Allocator,
         ) !void {
-            // std.log.debug("learn (batch size {d}): --------------------", .{training_data_batch.len});
             // Use the backpropagation algorithm to calculate the gradient of the cost function
             // (with respect to the network's weights and biases). This is done for each data point,
             // and the gradients are added together.
@@ -428,7 +426,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     // Reset the weight back to its original value
                     layer.weights[weight_index] += h;
 
-                    // Calculate the gradient: change in cost / change in weight (which is h)
+                    // Calculate the gradient: change in cost / change in weight (which is 2h)
                     cost_gradient_weights[weight_index] = delta_cost / (2 * h);
                 }
             }
@@ -453,7 +451,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 // Reset the bias back to its original value
                 layer.biases[node_index] += h;
 
-                // Calculate the gradient: change in cost / change in bias (which is h)
+                // Calculate the gradient: change in cost / change in bias (which is 2h)
                 cost_gradient_biases[node_index] = delta_cost / (2 * h);
             }
 
@@ -471,7 +469,12 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // Feed data through the network to calculate outputs. Save all
             // inputs/weighted_inputs/activations along the way to use for
             // backpropagation (`layer.layer_output_data`).
-            _ = try self.calculateOutputs(data_point.inputs, allocator);
+            const outputs = try self.calculateOutputs(data_point.inputs, allocator);
+            var output_sum: f64 = 0.0;
+            for (outputs) |output| {
+                output_sum += output;
+            }
+            std.log.debug("updateCostGradients: outputs: {d} output_sum ={d}", .{ outputs, output_sum });
             defer self.freeAfterCalculateOutputs(allocator);
 
             // ---- Backpropagation ----

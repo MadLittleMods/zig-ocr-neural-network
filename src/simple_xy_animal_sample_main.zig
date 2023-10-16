@@ -177,11 +177,11 @@ pub fn main() !void {
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{
-            //.soft_max = .{}
-            .sigmoid = .{},
+            .soft_max = .{},
+            //.sigmoid = .{},
         },
         neural_networks.CostFunction{
-            //.mean_squared_error = .{},
+            //.squared_error = .{},
             .cross_entropy = .{},
         },
         allocator,

@@ -16,7 +16,7 @@ const std = @import("std");
 // >
 // > ReLU is non-linear and has the advantage of not having any backpropagation errors
 // > unlike the sigmoid function
-
+//
 // https://machinelearningmastery.com/rectified-linear-activation-function-for-deep-learning-neural-networks/
 pub const Relu = struct {
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -89,7 +89,11 @@ pub const Sigmoid = struct {
     }
 };
 
-// SoftMax
+// SoftMax squishes the output between [0, 1] (TODO: inclusive or exclusive?) and all
+// the resulting elements add up to 1. So in terms of this usage, this function will
+// tell you what percentage that the given value at the `input_index` makes up the total
+// sum of all the values in the array.
+//
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
 // https://machinelearningmastery.com/softmax-activation-function-with-python/
@@ -179,7 +183,9 @@ test "Slope check activation functions" {
             .inputs = &[_]f64{ 0.1, 0.2, 0.3 },
             .input_index = 2,
         },
-        // ReLU is not differentiable at 0.0 so we can't test it
+        // ReLU is not differentiable at 0.0 so our estimatation would run into a kink
+        // and make the estimated slope innaccurate. So inaccurate that comparing the
+        // derivative function against the estimated slope would fail.
         // .{
         //     .activation_function = ActivationFunction{ .relu = .{} },
         //     .inputs = &[_]f64{ -0.2, 0.1, 0.0, 0.1, 0.2 },
@@ -195,7 +201,9 @@ test "Slope check activation functions" {
             .inputs = &[_]f64{ 0.1, 0.2, 0.3 },
             .input_index = 2,
         },
-        // LeakyReLU is not differentiable at 0.0 so we can't test it
+        // LeakyReLU is not differentiable at 0.0 so our estimatation would run into a kink
+        // and make the estimated slope innaccurate. So inaccurate that comparing the
+        // derivative function against the estimated slope would fail.
         // .{
         //     .activation_function = ActivationFunction{ .leaky_relu = .{} },
         //     .inputs = &[_]f64{ -0.2, 0.1, 0.0, 0.1, 0.2 },
@@ -252,7 +260,7 @@ test "Slope check activation functions" {
         // estimated slope
         const threshold = 0.0001;
         if (@fabs(estimated_slope - actual_slope) > threshold) {
-            std.debug.print("{s}: Expected actual slope {d} to be within {d} of the estimated slope: {d}\n", .{
+            std.debug.print("{s}: Expected actual slope {d} to be within {d} of the estimated slope: {d} (which we assume to ~correct)\n", .{
                 activation_function.getName(),
                 actual_slope,
                 threshold,

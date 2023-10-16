@@ -2,50 +2,47 @@ const std = @import("std");
 
 // Cost functions are also known as loss functions.
 
-// TODO: In the future, we could add negative log likelihood, MeanAbsoluteError,
-// RootMeanSquaredError, etc.
+// TODO: In the future, we could add negative log likelihood, MeanAbsoluteError (L1 loss),
+// RootMeanSquaredError, Focal Loss,  etc.
 
+// SquaredError (also known as L2 loss)
+//
 // Used for regression problems where the output data comes from a normal/gaussian
-// distribution (TODO: What does this mean?). Does not penalize misclassifications as
-// much as it could/should for binary/multi-class classification problems. Although this
-// answer says that it doesn't matter, https://stats.stackexchange.com/a/568253/360344.
-// Useful when TODO: What?
-//
-// > The MSE function is non-convex for binary classification. Thus, if a binary
-// > classification model is trained with MSE Cost function, it is not guaranteed to
-// > minimize the Cost function. Also, using MSE as a cost function assumes the Gaussian
-// > distribution which is not the case for binary classification.
-// >
-// > -- https://stats.stackexchange.com/questions/46413/can-the-mean-squared-error-be-used-for-classification/449436#449436
-//
-//
-//
-// TODO: Is this Sum of Squared Errors (SSE) or Mean Squared Error (MSE)?
-pub const MeanSquaredError = struct {
-    // We want to calculate the total cost (not the average cost).
-    pub fn cost(_: @This(), actual_outputs: []const f64, expected_outputs: []const f64) f64 {
+// distribution like predicting something based on a trend (extrapolate). Does not
+// penalize misclassifications as much as it could/should for binary/multi-class
+// classification problems. Although this answer says that it doesn't matter,
+// https://stats.stackexchange.com/a/568253/360344. Useful when TODO: What?
+pub const SquaredError = struct {
+    // Sum of Squared Errors (SSE)
+    pub fn vector_cost(
+        self: @This(),
+        actual_outputs: []const f64,
+        expected_outputs: []const f64,
+    ) f64 {
         var cost_sum: f64 = 0;
         for (actual_outputs, expected_outputs) |actual_output, expected_output| {
-            const error_difference = actual_output - expected_output;
-            cost_sum += (error_difference * error_difference);
+            cost_sum += self.individual_cost(actual_output, expected_output);
         }
 
-        // > We multiply our MSE cost function by 1/2 so that when we take the derivative,
+        // We want to calculate the total cost (not the average cost).
+        return cost_sum;
+    }
+
+    pub fn individual_cost(_: @This(), actual_output: f64, expected_output: f64) f64 {
+        const error_difference = actual_output - expected_output;
+        const squared_error = (error_difference * error_difference);
+
+        // > We multiply our cost function by 1/2 so that when we take the derivative,
         // > the 2s cancel out. Multiplying the cost function by a scalar does not affect
         // > the location of its minimum, so we can get away with this.
         // >
-        // > Alternatively, you could think of this as folding the 2 into the learning
-        // > rate. It makes sense to leave the 1/m term, though, because we want the same
-        // > learning rate (alpha) to work for different training set sizes (m).
-        // >
         // > https://mccormickml.com/2014/03/04/gradient-descent-derivation/#one-half-mean-squared-error
-        const one_half_mean_squared_error = 0.5 * cost_sum;
+        const one_half_squared_error = 0.5 * squared_error;
 
-        return one_half_mean_squared_error;
+        return one_half_squared_error;
     }
 
-    // TODO: Derivative of what with respect to what?
-    pub fn derivative(_: @This(), actual_output: f64, expected_output: f64) f64 {
+    pub fn individual_derivative(_: @This(), actual_output: f64, expected_output: f64) f64 {
         return actual_output - expected_output;
     }
 };
@@ -55,31 +52,47 @@ pub const MeanSquaredError = struct {
 // which just means we have buckets/categories with expected probabilities.
 //
 // https://machinelearningmastery.com/cross-entropy-for-machine-learning/
+//
+// Also called Sigmoid Cross-Entropy loss or Binary Cross-Entropy Loss
+// https://gombru.github.io/2018/05/23/cross_entropy_loss/
 pub const CrossEntropy = struct {
-    // We want to calculate the total cost (not the average cost).
-    pub fn cost(
-        _: @This(),
+    pub fn vector_cost(
+        self: @This(),
         actual_outputs: []const f64,
         /// Note: `expected_outputs` are expected to all be either 0 or 1 (probably using one-hot encoding).
         expected_outputs: []const f64,
     ) f64 {
         var cost_sum: f64 = 0;
         for (actual_outputs, expected_outputs) |actual_output, expected_output| {
-            var v: f64 = 0;
-            if (expected_output == 1.0) {
-                v += -1 * @log(actual_output);
-            } else {
-                v += -1 * @log(1 - actual_output);
-            }
-
-            cost_sum += if (std.math.isNan(v)) 0 else v;
+            cost_sum += self.individual_cost(actual_output, expected_output);
         }
 
+        // We want to calculate the total cost (not the average cost).
         return cost_sum;
     }
 
-    pub fn derivative(_: @This(), actual_output: f64, expected_output: f64) f64 {
-        // The function is undefined at 0 and 1, so we return 0 because TODO: Why?
+    pub fn individual_cost(
+        _: @This(),
+        actual_output: f64,
+        /// Note: `expected_output` should be either 0.0 or 1.0.
+        expected_output: f64,
+    ) f64 {
+        var v: f64 = 0;
+        if (expected_output == 1.0) {
+            v += -1 * @log(actual_output);
+        } else if (expected_output == 0.0) {
+            v += -1 * @log(1 - actual_output);
+        } else {
+            std.log.err("CrossEntropy.individual_cost(): Expected `expected_output` to be either 0.0 or 1.0 but was given {d}", .{expected_output});
+            @panic("CrossEntropy.individual_cost(): Expected `expected_output` to be either 0.0 or 1.0");
+        }
+
+        return if (std.math.isNan(v)) 0 else v;
+    }
+
+    pub fn individual_derivative(_: @This(), actual_output: f64, expected_output: f64) f64 {
+        // The function is undefined at 0 and 1 (not continuous/differentiable), so we
+        // return 0 because TODO: Why?
         if (actual_output == 0.0 or actual_output == 1.0) {
             return 0.0;
         }
@@ -88,18 +101,159 @@ pub const CrossEntropy = struct {
     }
 };
 
+/// Estimate the slope of the cost function at the given input using the
+/// CostFunction's `activate` function. We can use this to compare against the
+/// CostFunction's `derivative` function to make sure it's correct.
+///
+/// We're using the the centered difference formula for better accuracy: (f(x + h) - f(x - h)) / 2h
+/// The normal finite difference formula has less accuracy: (f(x + h) - f(x)) / h
+fn estimateSlopeOfCostFunction(
+    cost_function: CostFunction,
+    actual_output: f64,
+    expected_output: f64,
+) !f64 {
+    // We want h to be small but not too small to cause float point precision problems.
+    const h = 0.0001;
+
+    var mutable_actual_output = actual_output;
+
+    // Make a small nudge the input in the positive direction (+ h)
+    mutable_actual_output += h;
+    // Check how much that nudge causes the result to change
+    const result1 = cost_function.individual_cost(mutable_actual_output, expected_output);
+
+    // Make a small nudge the weight in the negative direction (- h). We
+    // `- 2h` because we nudged the weight in the positive direction by
+    // `h` just above and want to get back original_value first so we
+    // minus h, and then minus h again to get to (- h).
+    mutable_actual_output -= 2 * h;
+    // Check how much that nudge causes the cost to change
+    const result2 = cost_function.individual_cost(mutable_actual_output, expected_output);
+    // Find how much the cost changed between the two nudges
+    const delta_result = result1 - result2;
+
+    // Reset the input back to its original value
+    mutable_actual_output += h;
+
+    // Calculate the gradient: change in activation / change in input (which is 2h)
+    const estimated_cost = delta_result / (2 * h);
+
+    return estimated_cost;
+}
+
+const CostTestCase = struct {
+    cost_function: CostFunction,
+    actual_output: f64,
+    expected_output: f64,
+};
+
+// Cross-check the `individual_cost` function against the `individual_derivative`
+// function to make sure they relate and match up to each other.
+test "Slope check cost functions" {
+    var test_cases = [_]CostTestCase{
+        // SquaredError
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0.5,
+            .expected_output = 0.75,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0.75,
+            .expected_output = 0.5,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0.5,
+            .expected_output = 0.5,
+        },
+        // CrossEntropy has some specific preconditions (which is why we use it
+        // alongside SoftMax activation function):
+        //  - `actual_output` range has to be within (0, 1)
+        //  - `expected_output` has to be either 0.0 or 1.0
+        .{
+            .cost_function = CostFunction{ .cross_entropy = .{} },
+            .actual_output = 0.1,
+            .expected_output = 1.0,
+        },
+        .{
+            .cost_function = CostFunction{ .cross_entropy = .{} },
+            .actual_output = 0.5,
+            .expected_output = 1.0,
+        },
+        .{
+            .cost_function = CostFunction{ .cross_entropy = .{} },
+            .actual_output = 0.5,
+            .expected_output = 0.0,
+        },
+        .{
+            .cost_function = CostFunction{ .cross_entropy = .{} },
+            .actual_output = 0.9,
+            .expected_output = 0.0,
+        },
+    };
+
+    for (test_cases) |test_case| {
+        var cost_function = test_case.cost_function;
+        const actual_output = test_case.actual_output;
+        const expected_output = test_case.expected_output;
+
+        // Estimate the slope of the activation function at the given input
+        const estimated_slope = try estimateSlopeOfCostFunction(
+            cost_function,
+            actual_output,
+            expected_output,
+        );
+        // A derivative is just the slope of the given function. So the slope returned
+        // by the derivative function should be the same as the slope we estimated.
+        const actual_slope = cost_function.individual_derivative(actual_output, expected_output);
+
+        // Check to make sure the actual slope is within a certain threshold of the
+        // estimated slope
+        const threshold = 0.0001;
+        if (@fabs(estimated_slope - actual_slope) > threshold) {
+            std.debug.print("{s}({d}, {d}): Expected actual slope {d} to be within {d} of the estimated slope: {d} (which we assume to ~correct)\n", .{
+                cost_function.getName(),
+                actual_output,
+                expected_output,
+                actual_slope,
+                threshold,
+                estimated_slope,
+            });
+            return error.FaultySlope;
+        }
+    }
+}
+
 pub const CostFunction = union(enum) {
-    mean_squared_error: MeanSquaredError,
+    squared_error: SquaredError,
     cross_entropy: CrossEntropy,
 
-    pub fn cost(self: @This(), actual_outputs: []const f64, expected_outputs: []const f64) f64 {
+    /// Given the actual output vector and the expected output vector, calculate the cost.
+    /// This function returns the total cost (not the average cost).
+    pub fn vector_cost(self: @This(), actual_outputs: []const f64, expected_outputs: []const f64) f64 {
         return switch (self) {
-            inline else => |case| case.cost(actual_outputs, expected_outputs),
+            inline else => |case| case.vector_cost(actual_outputs, expected_outputs),
         };
     }
-    pub fn derivative(self: @This(), actual_output: f64, expected_output: f64) f64 {
+
+    pub fn individual_cost(self: @This(), actual_output: f64, expected_output: f64) f64 {
         return switch (self) {
-            inline else => |case| case.derivative(actual_output, expected_output),
+            inline else => |case| case.individual_cost(actual_output, expected_output),
+        };
+    }
+
+    // TODO: Derivative of what with respect to what?
+    pub fn individual_derivative(self: @This(), actual_output: f64, expected_output: f64) f64 {
+        return switch (self) {
+            inline else => |case| case.individual_derivative(actual_output, expected_output),
+        };
+    }
+
+    pub fn getName(self: @This()) []const u8 {
+        return switch (self) {
+            .squared_error => "SquaredError",
+            .cross_entropy => "CrossEntropy",
         };
     }
 };

@@ -260,7 +260,6 @@ pub const Layer = struct {
         expected_outputs: []const f64,
         allocator: std.mem.Allocator,
     ) ![]f64 {
-        std.log.debug("calculateOutputLayerShareableNodeDerivatives", .{});
         if (expected_outputs.len != self.num_output_nodes) {
             std.log.err("calculateOutputLayerShareableNodeDerivatives() was called with {d} expected_outputs but we expect it to match the same num_output_nodes={d}", .{
                 expected_outputs,
@@ -285,15 +284,10 @@ pub const Layer = struct {
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
-                const cost_derivative = cost_function.derivative(
+                const cost_derivative = cost_function.individual_derivative(
                     self.layer_output_data.outputs[node_index],
                     expected_outputs[node_index],
                 );
-                std.log.debug("calculateOutputLayerShareableNodeDerivatives: node_index={d} activation_derivative={d} cost_derivative={d}", .{
-                    node_index,
-                    activation_derivative,
-                    cost_derivative,
-                });
                 shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
             } else {
                 @panic(
@@ -315,7 +309,6 @@ pub const Layer = struct {
         next_layer_shareable_node_derivatives: []const f64,
         allocator: std.mem.Allocator,
     ) ![]f64 {
-        std.log.debug("calculateHiddenLayerShareableNodeDerivatives", .{});
         // The following comments are made from the perspective of layer 1 in our
         // ridicously simple neural network that has just 3 nodes connected by 2
         // weights (see dev-notes.md for more details).
@@ -354,9 +347,6 @@ pub const Layer = struct {
         // Size: num_output_nodes
         shareable_node_derivatives: []const f64,
     ) !void {
-        std.log.debug("updateCostGradients() called with shareable_node_derivatives={any}", .{
-            shareable_node_derivatives,
-        });
         if (shareable_node_derivatives.len != self.num_output_nodes) {
             std.log.err("updateGradients() was called with {d} shareable_node_derivatives but we expect it to match the same num_output_nodes={d}", .{
                 shareable_node_derivatives.len,
@@ -386,11 +376,6 @@ pub const Layer = struct {
             // Evaluate the partial derivative of cost with respect to bias of the current node.
             // dc/db_2 = dz_2/db_2 * shareable_node_derivatives[node_index]
             const derivative_cost_wrt_bias = derivative_weighted_input_wrt_bias * shareable_node_derivatives[node_index];
-            std.log.debug("updateCostGradients: node_index={d} cost_gradient_biases[node_index]={d} + derivative_cost_wrt_bias={d}", .{
-                node_index,
-                self.cost_gradient_biases[node_index],
-                derivative_cost_wrt_bias,
-            });
             self.cost_gradient_biases[node_index] += derivative_cost_wrt_bias;
         }
     }
