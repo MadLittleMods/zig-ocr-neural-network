@@ -28,6 +28,7 @@ const animal_labels = [_][]const u8{
     "goat",
     // TODO: Remove this third label (just testing what goes wrong)
     "TODO: Remove me",
+    //"TODO: Remove me2",
 };
 const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 // Graph of animal data points:
@@ -181,8 +182,8 @@ pub fn main() !void {
             //.sigmoid = .{},
         },
         neural_networks.CostFunction{
-            //.squared_error = .{},
-            .cross_entropy = .{},
+            .squared_error = .{},
+            //.cross_entropy = .{},
         },
         allocator,
     );

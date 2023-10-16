@@ -133,6 +133,7 @@ pub const Layer = struct {
         // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
         const seed = 123;
         var prng = std.rand.DefaultPrng.init(seed);
+        const random_instance = prng.random();
 
         // Initialize the weights of the network to random values
         for (weights) |*weight| {
@@ -141,7 +142,7 @@ pub const Layer = struct {
             // your number will fall in the [-3, +3] range.
             //
             // > To use different parameters, use: floatNorm(...) * desiredStddev + desiredMean.
-            const normal_random_value = prng.random().floatNorm(f64);
+            const normal_random_value = random_instance.floatNorm(f64);
             // Now to choose a good weight initialization scheme. The "best" heuristic
             // often depends on the specific activiation function being used. We want to
             // avoid the vanishing/exploding gradient problem.
@@ -228,7 +229,6 @@ pub const Layer = struct {
 
         self.layer_output_data.inputs = inputs;
 
-        var outputs = try allocator.alloc(f64, self.num_output_nodes);
         // Calculate the weighted inputs for each node in this layer
         for (0..self.num_output_nodes) |node_index| {
             // Calculate the weighted input for this node
@@ -240,6 +240,7 @@ pub const Layer = struct {
         }
 
         // Apply activation function
+        var outputs = try allocator.alloc(f64, self.num_output_nodes);
         for (0..self.num_output_nodes) |node_index| {
             // Then calculate the activation of the node
             outputs[node_index] = self.activation_function.activate(

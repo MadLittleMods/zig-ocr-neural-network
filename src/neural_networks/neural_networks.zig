@@ -470,11 +470,11 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // inputs/weighted_inputs/activations along the way to use for
             // backpropagation (`layer.layer_output_data`).
             const outputs = try self.calculateOutputs(data_point.inputs, allocator);
-            var output_sum: f64 = 0.0;
+            var output_sum_asdf: f64 = 0.0;
             for (outputs) |output| {
-                output_sum += output;
+                output_sum_asdf += output;
             }
-            std.log.debug("updateCostGradients: outputs: {d} output_sum ={d}", .{ outputs, output_sum });
+            std.log.debug("updateCostGradients: outputs: {d} output_sum ={d}", .{ outputs, output_sum_asdf });
             defer self.freeAfterCalculateOutputs(allocator);
 
             // ---- Backpropagation ----
