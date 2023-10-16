@@ -1,4 +1,5 @@
 const std = @import("std");
+const shuffle = @import("zshuffle").shuffle;
 const mnist_data_utils = @import("mnist/mnist_data_utils.zig");
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
@@ -27,6 +28,11 @@ pub fn main() !void {
         }
     }
 
+    // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+    const seed = 123;
+    var prng = std.rand.DefaultPrng.init(seed);
+    const random_instance = prng.random();
+
     const start_timestamp_seconds = std.time.timestamp();
 
     // Read the MNIST data from the filesystem and normalize it.
@@ -50,7 +56,7 @@ pub fn main() !void {
     const DigitDataPoint = neural_networks.DataPoint(u8, &digit_labels);
 
     // Convert the normalized MNIST data into `DigitDataPoint` which are compatible with the neural network
-    const training_data_points = try allocator.alloc(DigitDataPoint, normalized_raw_training_images.len);
+    var training_data_points = try allocator.alloc(DigitDataPoint, normalized_raw_training_images.len);
     defer allocator.free(training_data_points);
     for (normalized_raw_training_images, 0..) |raw_image, image_index| {
         training_data_points[image_index] = DigitDataPoint.init(
@@ -94,6 +100,9 @@ pub fn main() !void {
     while (true
     // current_epoch_index < TRAINING_EPOCHS
     ) : (current_epoch_index += 1) {
+        // Shuffle the data after each epoch
+        shuffle(random_instance, training_data_points, .{});
+
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
