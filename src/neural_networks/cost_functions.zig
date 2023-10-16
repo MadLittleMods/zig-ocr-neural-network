@@ -167,6 +167,41 @@ test "Slope check cost functions" {
             .actual_output = 0.5,
             .expected_output = 0.5,
         },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0.75,
+            .expected_output = 1.0,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = -5,
+            .expected_output = 0,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 5,
+            .expected_output = 0,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0,
+            .expected_output = 0,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0,
+            .expected_output = -5,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 0,
+            .expected_output = 5,
+        },
+        .{
+            .cost_function = CostFunction{ .squared_error = .{} },
+            .actual_output = 3,
+            .expected_output = 1.0,
+        },
         // CrossEntropy has some specific preconditions (which is why we use it
         // alongside SoftMax activation function):
         //  - `actual_output` range has to be within (0, 1)
