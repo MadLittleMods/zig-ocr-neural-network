@@ -1,7 +1,7 @@
 const std = @import("std");
+const shuffle = @import("zshuffle").shuffle;
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
-const data_set_helper = @import("neural_networks/data_set_helper.zig");
 const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig").graphNeuralNetwork;
 const time_utils = @import("utils/time_utils.zig");
 
@@ -27,7 +27,7 @@ const animal_labels = [_][]const u8{ "fish", "goat" };
 const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 // Graph of animal data points:
 // https://www.desmos.com/calculator/tkfacez5wt
-const animal_training_data_points = [_]AnimalDataPoint{
+var animal_training_data_points = [_]AnimalDataPoint{
     AnimalDataPoint.init(&[_]f64{ 0.924, 0.166 }, "goat"),
     AnimalDataPoint.init(&[_]f64{ 0.04, 0.085 }, "fish"),
     AnimalDataPoint.init(&[_]f64{ 0.352, 0.373 }, "goat"),
@@ -157,6 +157,11 @@ pub fn main() !void {
         }
     }
 
+    // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+    const seed = 123;
+    var prng = std.rand.DefaultPrng.init(seed);
+    const random_instance = prng.random();
+
     const start_timestamp_seconds = std.time.timestamp();
 
     var neural_network = try neural_networks.NeuralNetwork(AnimalDataPoint).init(
@@ -175,17 +180,12 @@ pub fn main() !void {
     );
     defer neural_network.deinit(allocator);
 
-    // Instead of shuffling the data itself, we just shuffle a list of indices into the
-    // data and then use them to assemble a batch.
-    var training_data_lookup_indices = try data_set_helper.createLookupIndices(animal_training_data_points.len, allocator);
-    defer allocator.free(training_data_lookup_indices);
-
     var current_epoch_iteration_count: usize = 0;
     while (true
     //current_epoch_iteration_count < TRAINING_EPOCHS
     ) : (current_epoch_iteration_count += 1) {
-        // Shuffle the indices into the data after each epoch
-        data_set_helper.shuffleLookupIndicesInPlace(training_data_lookup_indices);
+        // Shuffle the data after each epoch
+        shuffle(random_instance, &animal_training_data_points, .{});
 
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
@@ -197,15 +197,9 @@ pub fn main() !void {
         // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
         while (batch_index < animal_training_data_points.len / BATCH_SIZE) : (batch_index += 1) {
-            const training_batch = try data_set_helper.assembleShuffledBatch(
-                AnimalDataPoint,
-                &animal_training_data_points,
-                training_data_lookup_indices,
-                batch_index,
-                BATCH_SIZE,
-                allocator,
-            );
-            defer allocator.free(training_batch);
+            const batch_start_index = batch_index * BATCH_SIZE;
+            const batch_end_index = batch_start_index + BATCH_SIZE;
+            const training_batch = animal_training_data_points[batch_start_index..batch_end_index];
 
             try neural_network.learn(
                 training_batch,
