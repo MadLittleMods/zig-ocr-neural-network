@@ -179,8 +179,8 @@ pub fn main() !void {
             animal_labels.len,
         },
         neural_networks.ActivationFunction{
-            // .relu = .{},
-            .leaky_relu = .{},
+            .relu = .{},
+            //.leaky_relu = .{},
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{
@@ -195,17 +195,19 @@ pub fn main() !void {
     );
     defer neural_network.deinit(allocator);
 
-    const test_layer_index = neural_network.layers.len - 1;
-    std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[test_layer_index].weights});
-    std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[test_layer_index].biases});
+    // const test_layer_index = neural_network.layers.len - 1;
+    // std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[test_layer_index].weights});
+    // std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[test_layer_index].biases});
+
+    for (neural_network.layers, 0..) |layer, layer_index| {
+        std.log.debug("layer {d} weights {d}", .{ layer_index, layer.weights });
+        std.log.debug("layer {d} biases {d}", .{ layer_index, layer.biases });
+    }
 
     var current_epoch_iteration_count: usize = 0;
     while (true
     //current_epoch_iteration_count < TRAINING_EPOCHS
     ) : (current_epoch_iteration_count += 1) {
-        // Shuffle the data after each epoch
-        shuffle(random_instance, &animal_training_data_points, .{});
-
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
@@ -266,6 +268,9 @@ pub fn main() !void {
                 allocator,
             );
         }
+
+        // Shuffle the data after each epoch
+        shuffle(random_instance, &animal_training_data_points, .{});
     }
 
     // Graph how the neural network looks at the end of training.
