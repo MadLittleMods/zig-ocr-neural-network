@@ -329,7 +329,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     test_layer.cost_gradient_biases,
                 });
                 return error.UnableToFindEstimatedToActualWeightRatio;
-            } else if (found_estimated_to_actual_cost_gradient_ratio != 1) {
+            } else if (@fabs(1 - found_estimated_to_actual_cost_gradient_ratio) > 0.0001) {
                 // This is just a warning because I don't think it affects the direction
                 std.log.warn("The first (estimated / actual) cost gradient ratio we found is {d} " ++
                     "(should be ~1 which means the estimated and actual match) " ++
@@ -406,8 +406,10 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // that our estimated gradient will not match our actual gradient exactly.
             for (0..layer.num_output_nodes) |node_index| {
                 for (0..layer.num_input_nodes) |node_in_index| {
+                    const weight_index = layer.getFlatWeightIndex(node_index, node_in_index);
+
                     // Make a small nudge the weight in the positive direction (+ h)
-                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] += h;
+                    layer.weights[weight_index] += h;
                     // Check how much that nudge causes the cost to change
                     const cost1 = try self.cost_many(training_data_batch, allocator);
 
@@ -415,17 +417,17 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     // `- 2h` because we nudged the weight in the positive direction by
                     // `h` just above and want to get back original_value first so we
                     // minus h, and then minus h again to get to (- h).
-                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] -= 2 * h;
+                    layer.weights[weight_index] -= 2 * h;
                     // Check how much that nudge causes the cost to change
                     const cost2 = try self.cost_many(training_data_batch, allocator);
                     // Find how much the cost changed between the two nudges
                     const delta_cost = cost1 - cost2;
 
                     // Reset the weight back to its original value
-                    layer.weights[layer.getFlatWeightIndex(node_index, node_in_index)] += h;
+                    layer.weights[weight_index] += h;
 
-                    // Calculate the gradient: change in cost / change in weight (which is h)
-                    cost_gradient_weights[layer.getFlatWeightIndex(node_index, node_in_index)] = delta_cost / (2 * h);
+                    // Calculate the gradient: change in cost / change in weight (which is 2h)
+                    cost_gradient_weights[weight_index] = delta_cost / (2 * h);
                 }
             }
 
@@ -449,7 +451,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 // Reset the bias back to its original value
                 layer.biases[node_index] += h;
 
-                // Calculate the gradient: change in cost / change in bias (which is h)
+                // Calculate the gradient: change in cost / change in bias (which is 2h)
                 cost_gradient_biases[node_index] = delta_cost / (2 * h);
             }
 
