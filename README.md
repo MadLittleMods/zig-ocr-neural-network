@@ -40,8 +40,8 @@ $ zig build run-mnist_ocr
 
 To run a basic graphable dataset example, you can use the
 `simple_xy_animal_sample_main.zig` example which produces an image called
-`simple_xy_animal_graph.ppm`. This demo actually seems to learn with the right hyper
-parameters:
+`simple_xy_animal_graph.ppm` every 10,000 epochs showing the classification boundary.
+This demo actually seems to learn with the right hyper parameters:
 
 ```sh
 $ zig build run-simple_xy_animal_sample
