@@ -32,15 +32,23 @@ gunzip *.gz
 
 Tested with Zig 0.11.0
 
+(currently does not work and I'm unable to see progress in training even after hours,
+tried many different hyper parameter changes):
 ```sh
 $ zig build run-mnist_ocr
 ```
 
-To run a basic graphable dataset example, you can use the `simple_xy_animal_sample_main.zig`:
+To run a basic graphable dataset example, you can use the
+`simple_xy_animal_sample_main.zig` example which produces an image called
+`simple_xy_animal_graph.ppm`. This demo actually seems to learn with the right hyper
+parameters:
 
 ```sh
 $ zig build run-simple_xy_animal_sample
 ```
+
+![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/e92d532c-9923-4526-b884-5a31a39d8175)
+
 
 ## Testing
 
