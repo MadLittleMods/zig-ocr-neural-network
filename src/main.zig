@@ -89,7 +89,7 @@ pub fn main() !void {
             .sigmoid = .{},
         },
         neural_networks.CostFunction{
-            //squared_error = .{},
+            //.squared_error = .{},
             .cross_entropy = .{},
         },
         allocator,

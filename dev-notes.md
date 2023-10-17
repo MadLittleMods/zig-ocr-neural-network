@@ -79,6 +79,7 @@ Some variable explanations:
 
  - $`a0`$: The input to the network. This is often alternatively labeled as $`x`$. Labeling the input as an "activation" is a bit strange since it hasn't been through our activation function but it just makes our notation a bit more consistent.
  - $`w_1`$, $`w_2`$: The weight of the connection
+ - $`b_1`$, $`b_2`$: The bias of the node
 
 Equations:
 
@@ -101,21 +102,22 @@ function (where the slope is 0) which is the goal. This process is called gradie
 
 If we keep these steps proportional to the slope, then when the slope is flattening out
 approaching a local minimum, our steps get smaller and smaller which helps us from
-overshooting. This is why our learn rate is some small number.
+overshooting. This is also why our learn rate is some small number so we don't overshoot
+and bounce around the local minimum valley.
 
-The partial derivative of cost with respect to the weight of the 2nd connection. (this is the equation used in `calculateOutputLayerShareableNodeDerivatives(...)`)
+The partial derivative of cost with respect to the **weight** of the 2nd connection. (this is the equation used in `calculateOutputLayerShareableNodeDerivatives(...)`)
 $`\begin{aligned}
 \frac{\partial c}{\partial w_2} &= \frac{\partial z_2}{\partial w_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= a_1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
 \end{aligned}`$
 
-The partial derivative of cost with respect to the weight of the 1st connection. (this is the equation used in `calculateHiddenLayerShareableNodeDerivatives(...)`)
+The partial derivative of cost with respect to the **weight** of the 1st connection. (this is the equation used in `calculateHiddenLayerShareableNodeDerivatives(...)`)
 $`\begin{aligned}
 \frac{\partial c}{\partial w_1} &= \frac{\partial z_1}{\partial w_1} &\times& \frac{\partial a_1}{\partial z_1} &\times& \frac{\partial z_2}{\partial a_1} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= a_0 &\times& \verb|activation_function.derivative|(z_1) &\times& w_2 &\times& \verb|activation_function.derivative|(z_2)  &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
 \end{aligned}`$
 
-The partial derivative of cost with respect to bias of the 2nd node. (this applies to both hidden and output layers)
+The partial derivative of cost with respect to **bias** of the 2nd node. (this applies to both hidden and output layers)
 $`\begin{aligned}
 \frac{\partial c}{\partial b_2} &= \frac{\partial z_2}{\partial b_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
 \\&= 1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})

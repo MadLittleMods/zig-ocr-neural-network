@@ -88,7 +88,7 @@ pub const Layer = struct {
         var weight_velocities: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
         @memset(weight_velocities, 0);
         var bias_velocities: []f64 = try allocator.alloc(f64, num_output_nodes);
-        @memset(weight_velocities, 0);
+        @memset(bias_velocities, 0);
 
         var weighted_input_sums = try allocator.alloc(f64, num_output_nodes);
         // We don't need to initialize the weighted_input_sums array because we will
