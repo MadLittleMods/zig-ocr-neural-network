@@ -81,10 +81,14 @@ pub const Layer = struct {
         );
 
         var cost_gradient_weights: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
+        @memset(cost_gradient_weights, 0);
         var cost_gradient_biases: []f64 = try allocator.alloc(f64, num_output_nodes);
+        @memset(cost_gradient_biases, 0);
 
         var weight_velocities: []f64 = try allocator.alloc(f64, num_input_nodes * num_output_nodes);
+        @memset(weight_velocities, 0);
         var bias_velocities: []f64 = try allocator.alloc(f64, num_output_nodes);
+        @memset(bias_velocities, 0);
 
         var weighted_input_sums = try allocator.alloc(f64, num_output_nodes);
 
