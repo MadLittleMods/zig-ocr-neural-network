@@ -173,7 +173,7 @@ pub fn main() !void {
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
         neural_networks.CostFunction{
-            //.mean_squared_error = .{},
+            //.squared_error = .{},
             .cross_entropy = .{},
         },
         allocator,

@@ -139,7 +139,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             var outputs = try self.calculateOutputs(data_point.inputs, allocator);
             defer self.freeAfterCalculateOutputs(allocator);
 
-            return self.cost_function.cost(outputs, &data_point.expected_outputs);
+            return self.cost_function.vector_cost(outputs, &data_point.expected_outputs);
         }
 
         /// Calculate the total cost of the network for a batch of data points
@@ -158,7 +158,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         }
 
         /// Calculate the average cost of the network for a batch of data points
-        pub fn average_cost(
+        pub fn cost_average(
             self: *Self,
             data_points: []const DataPointType,
             allocator: std.mem.Allocator,
