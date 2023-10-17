@@ -100,9 +100,6 @@ pub fn main() !void {
     while (true
     // current_epoch_index < TRAINING_EPOCHS
     ) : (current_epoch_index += 1) {
-        // Shuffle the data after each epoch
-        shuffle(random_instance, training_data_points, .{});
-
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
@@ -154,5 +151,8 @@ pub fn main() !void {
                 });
             }
         }
+
+        // Shuffle the data after each epoch
+        shuffle(random_instance, training_data_points, .{});
     }
 }
