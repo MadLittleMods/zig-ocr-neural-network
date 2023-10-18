@@ -169,7 +169,8 @@ pub fn main() !void {
         &[_]u32{ 2, 10, 10, animal_labels.len },
         neural_networks.ActivationFunction{
             // .relu = .{},
-            .leaky_relu = .{},
+            // .leaky_relu = .{},
+            .elu = .{},
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
