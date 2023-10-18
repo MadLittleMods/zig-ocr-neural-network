@@ -224,7 +224,7 @@ pub fn main() !void {
                     &animal_testing_data_points,
                     allocator,
                 );
-                std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, acccuracy with testing points {d}", .{
+                std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, accuracy with testing points {d}", .{
                     current_epoch_iteration_count,
                     batch_index,
                     duration_string,

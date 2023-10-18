@@ -142,7 +142,7 @@ pub fn main() !void {
                     testing_data_points,
                     allocator,
                 );
-                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, acccuracy with test points {d}", .{
+                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with test points {d}", .{
                     current_epoch_index,
                     batch_index,
                     duration_string,
