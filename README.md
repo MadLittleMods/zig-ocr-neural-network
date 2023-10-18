@@ -47,7 +47,7 @@ This demo actually seems to learn with the right hyper parameters:
 $ zig build run-simple_xy_animal_sample
 ```
 
-![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/e92d532c-9923-4526-b884-5a31a39d8175)
+![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/128ca52f-0f6f-42ae-8d7e-c557ad943706)
 
 
 ## Testing
