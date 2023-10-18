@@ -260,59 +260,76 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             defer allocator.free(estimated_cost_gradients.cost_gradient_weights);
             defer allocator.free(estimated_cost_gradients.cost_gradient_biases);
 
-            // Calculate the relative error between the values in the estimated and
-            // actual cost gradients. We want to make sure the relative error is not
-            // too high.
-            for (test_layer.cost_gradient_weights, estimated_cost_gradients.cost_gradient_weights, 0..) |a_value, b_value, weight_index| {
-                // Here are the thresholds of error we should be tolerating:
-                //
-                // >  - relative error > 1e-2 usually means the gradient is probably wrong
-                // >  - 1e-2 > relative error > 1e-4 should make you feel uncomfortable
-                // >  - 1e-4 > relative error is usually okay for objectives with kinks.
-                // >    But if there are no kinks (e.g. use of tanh nonlinearities and softmax),
-                // >    then 1e-4 is too high.
-                // >  - 1e-7 and less you should be happy.
-                // >
-                // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
-                const relative_error = calculateRelativeError(a_value, b_value);
-                if (relative_error > 0.01) {
-                    std.log.err("Relative error for index {d} in weight gradient was too high ({d})" ++
-                        "\n    Estimated weight gradient: {d:.6}" ++
-                        "\n       Actual weight gradient: {d:.6}" ++
-                        "\n    Estimated bias gradient: {d:.6}" ++
-                        "\n       Actual bias gradient: {d:.6}", .{
-                        weight_index,
-                        relative_error,
-                        estimated_cost_gradients.cost_gradient_weights,
-                        test_layer.cost_gradient_weights,
-                        estimated_cost_gradients.cost_gradient_biases,
-                        test_layer.cost_gradient_biases,
-                    });
-                    return error.RelativeErrorTooHigh;
-                } else if (relative_error > 0.0001) {
-                    // > Note that it is possible to know if a kink was crossed in the
-                    // > evaluation of the loss. This can be done by keeping track of
-                    // > the identities of all “winners” in a function of form max(x,y);
-                    // > That is, was x or y higher during the forward pass. If the
-                    // > identity of at least one winner changes when evaluating f(x+h)
-                    // > and then f(x−h), then a kink was crossed and the numerical
-                    // > gradient will not be exact.
+            const gradients_to_compare = [_]struct { gradient_name: []const u8, actual_gradient: []f64, estimated_gradient: []f64 }{
+                .{
+                    .gradient_name = "weight",
+                    .actual_gradient = test_layer.cost_gradient_weights,
+                    .estimated_gradient = estimated_cost_gradients.cost_gradient_weights,
+                },
+                .{
+                    .gradient_name = "bias",
+                    .actual_gradient = test_layer.cost_gradient_biases,
+                    .estimated_gradient = estimated_cost_gradients.cost_gradient_biases,
+                },
+            };
+
+            for (gradients_to_compare) |gradient_to_compare| {
+                // Calculate the relative error between the values in the estimated and
+                // actual cost gradients. We want to make sure the relative error is not
+                // too high.
+                for (gradient_to_compare.actual_gradient, gradient_to_compare.estimated_gradient, 0..) |a_value, b_value, gradient_index| {
+                    // Here are the thresholds of error we should be tolerating:
+                    //
+                    // >  - relative error > 1e-2 usually means the gradient is probably wrong
+                    // >  - 1e-2 > relative error > 1e-4 should make you feel uncomfortable
+                    // >  - 1e-4 > relative error is usually okay for objectives with kinks.
+                    // >    But if there are no kinks (e.g. use of tanh nonlinearities and softmax),
+                    // >    then 1e-4 is too high.
+                    // >  - 1e-7 and less you should be happy.
                     // >
                     // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
-                    std.log.warn("Relative error for index {d} in weight gradient is pretty high " ++
-                        "but if there was a kink in the objective, this level of error ({d}) is acceptable when " ++
-                        "crossing one of those kinks" ++
-                        "\n    Estimated weight gradient: {d:.6}" ++
-                        "\n       Actual weight gradient: {d:.6}" ++
-                        "\n    Estimated bias gradient: {d:.6}" ++
-                        "\n       Actual bias gradient: {d:.6}", .{
-                        weight_index,
-                        relative_error,
-                        estimated_cost_gradients.cost_gradient_weights,
-                        test_layer.cost_gradient_weights,
-                        estimated_cost_gradients.cost_gradient_biases,
-                        test_layer.cost_gradient_biases,
-                    });
+                    const relative_error = calculateRelativeError(a_value, b_value);
+                    if (relative_error > 0.01) {
+                        std.log.err("Relative error for index {d} in {s} gradient was too high ({d})." ++
+                            "\n    Estimated weight gradient: {d:.6}" ++
+                            "\n       Actual weight gradient: {d:.6}" ++
+                            "\n    Estimated bias gradient: {d:.6}" ++
+                            "\n       Actual bias gradient: {d:.6}", .{
+                            gradient_index,
+                            gradient_to_compare.gradient_name,
+                            relative_error,
+                            estimated_cost_gradients.cost_gradient_weights,
+                            test_layer.cost_gradient_weights,
+                            estimated_cost_gradients.cost_gradient_biases,
+                            test_layer.cost_gradient_biases,
+                        });
+                        return error.RelativeErrorTooHigh;
+                    } else if (relative_error > 0.0001) {
+                        // > Note that it is possible to know if a kink was crossed in the
+                        // > evaluation of the loss. This can be done by keeping track of
+                        // > the identities of all “winners” in a function of form max(x,y);
+                        // > That is, was x or y higher during the forward pass. If the
+                        // > identity of at least one winner changes when evaluating f(x+h)
+                        // > and then f(x−h), then a kink was crossed and the numerical
+                        // > gradient will not be exact.
+                        // >
+                        // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
+                        std.log.warn("Relative error for index {d} in {s} gradient is pretty high " ++
+                            "but if there was a kink in the objective, this level of error ({d}) is acceptable when " ++
+                            "crossing one of those kinks." ++
+                            "\n    Estimated weight gradient: {d:.6}" ++
+                            "\n       Actual weight gradient: {d:.6}" ++
+                            "\n    Estimated bias gradient: {d:.6}" ++
+                            "\n       Actual bias gradient: {d:.6}", .{
+                            gradient_index,
+                            gradient_to_compare.gradient_name,
+                            relative_error,
+                            estimated_cost_gradients.cost_gradient_weights,
+                            test_layer.cost_gradient_weights,
+                            estimated_cost_gradients.cost_gradient_biases,
+                            test_layer.cost_gradient_biases,
+                        });
+                    }
                 }
             }
 
