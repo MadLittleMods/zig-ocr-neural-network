@@ -273,10 +273,14 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 },
             };
 
+            var found_estimated_to_actual_cost_gradient_ratio: f64 = 0;
+            var has_flawed_cost_gradient: bool = false;
+            var was_relative_error_too_high: bool = false;
             for (gradients_to_compare) |gradient_to_compare| {
                 // Calculate the relative error between the values in the estimated and
                 // actual cost gradients. We want to make sure the relative error is not
                 // too high.
+                // =========================================================================
                 for (gradient_to_compare.actual_gradient, gradient_to_compare.estimated_gradient, 0..) |a_value, b_value, gradient_index| {
                     // Here are the thresholds of error we should be tolerating:
                     //
@@ -290,20 +294,12 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
                     const relative_error = calculateRelativeError(a_value, b_value);
                     if (relative_error > 0.01) {
-                        std.log.err("Relative error for index {d} in {s} gradient was too high ({d})." ++
-                            "\n    Estimated weight gradient: {d:.6}" ++
-                            "\n       Actual weight gradient: {d:.6}" ++
-                            "\n    Estimated bias gradient: {d:.6}" ++
-                            "\n       Actual bias gradient: {d:.6}", .{
+                        std.log.err("Relative error for index {d} in {s} gradient was too high ({d}).", .{
                             gradient_index,
                             gradient_to_compare.gradient_name,
                             relative_error,
-                            estimated_cost_gradients.cost_gradient_weights,
-                            test_layer.cost_gradient_weights,
-                            estimated_cost_gradients.cost_gradient_biases,
-                            test_layer.cost_gradient_biases,
                         });
-                        return error.RelativeErrorTooHigh;
+                        was_relative_error_too_high = true;
                     } else if (relative_error > 0.0001) {
                         // > Note that it is possible to know if a kink was crossed in the
                         // > evaluation of the loss. This can be done by keeping track of
@@ -316,90 +312,53 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                         // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
                         std.log.warn("Relative error for index {d} in {s} gradient is pretty high " ++
                             "but if there was a kink in the objective, this level of error ({d}) is acceptable when " ++
-                            "crossing one of those kinks." ++
-                            "\n    Estimated weight gradient: {d:.6}" ++
-                            "\n       Actual weight gradient: {d:.6}" ++
-                            "\n    Estimated bias gradient: {d:.6}" ++
-                            "\n       Actual bias gradient: {d:.6}", .{
+                            "crossing one of those kinks.", .{
                             gradient_index,
                             gradient_to_compare.gradient_name,
                             relative_error,
-                            estimated_cost_gradients.cost_gradient_weights,
-                            test_layer.cost_gradient_weights,
-                            estimated_cost_gradients.cost_gradient_biases,
-                            test_layer.cost_gradient_biases,
                         });
                     }
                 }
-            }
 
-            const ratio_threshold: f64 = 0.0001;
-            var found_estimated_to_actual_cost_gradient_ratio: f64 = 0;
+                // Calculate the ratio between the values in the estimated and actual
+                // cost gradients. We want to make sure the ratio is not too different
+                // from 1 or the ratio is the same across all values (because that
+                // doesn't affect the direction).
+                // =========================================================================
+                const ratio_threshold: f64 = 0.0001;
 
-            var has_flawed_weight_cost_gradient: bool = false;
-            for (estimated_cost_gradients.cost_gradient_weights, 0..) |estimated_weight_cost, cost_index| {
-                const actual_weight_cost = test_layer.cost_gradient_weights[cost_index];
+                for (gradient_to_compare.estimated_gradient, 0..) |estimated_cost, cost_index| {
+                    const actual_cost = gradient_to_compare.actual_gradient[cost_index];
 
-                // We have this check to watch out for divide by zero
-                if (estimated_weight_cost != 0 and actual_weight_cost != 0) {
-                    const weight_ratio = estimated_weight_cost / actual_weight_cost;
-                    // Set if it's not already set
-                    if (found_estimated_to_actual_cost_gradient_ratio == 0) {
-                        found_estimated_to_actual_cost_gradient_ratio = weight_ratio;
-                    }
+                    // We have this check to watch out for divide by zero
+                    if (estimated_cost != 0 and actual_cost != 0) {
+                        const cost_ratio = estimated_cost / actual_cost;
+                        // Set if it's not already set
+                        if (found_estimated_to_actual_cost_gradient_ratio == 0) {
+                            found_estimated_to_actual_cost_gradient_ratio = cost_ratio;
+                        }
 
-                    const ratio_from_found_difference = @fabs(weight_ratio - found_estimated_to_actual_cost_gradient_ratio);
-                    const ratio_from_matching_difference = @fabs(weight_ratio - 1);
-                    if (
-                    // If the ratio is too different from the ratio we found in the
-                    // first non-zero weight, then that's suspect since we would expect
-                    // the ratio to be the same for all weights.
-                    ratio_from_found_difference > ratio_threshold and
-                        // We can also sanity check that the ratio is close to 1 since
-                        // that means the estimated and actual cost gradients are
-                        // roughly the same.
-                        ratio_from_matching_difference > ratio_threshold)
-                    {
-                        has_flawed_weight_cost_gradient = true;
-                        std.log.warn("Weight: (ratio: {d:.3}) estimated_weight_cost {d} is too different from our cost gradient calculated by our actual back propagation algorithm {d}", .{
-                            weight_ratio,
-                            estimated_weight_cost,
-                            actual_weight_cost,
-                        });
-                    }
-                }
-            }
-
-            var has_flawed_bias_cost_gradient: bool = false;
-            for (estimated_cost_gradients.cost_gradient_biases, 0..) |estimated_bias_cost, cost_index| {
-                const actual_bias_cost = test_layer.cost_gradient_biases[cost_index];
-
-                // We have this check to watch out for divide by zero
-                if (estimated_bias_cost != 0 and actual_bias_cost != 0) {
-                    const bias_ratio = estimated_bias_cost / actual_bias_cost;
-                    // Set if it's not already set
-                    if (found_estimated_to_actual_cost_gradient_ratio == 0) {
-                        found_estimated_to_actual_cost_gradient_ratio = bias_ratio;
-                    }
-
-                    const ratio_from_found_difference = @fabs(bias_ratio - found_estimated_to_actual_cost_gradient_ratio);
-                    const ratio_from_matching_difference = @fabs(bias_ratio - 1);
-                    if (
-                    // If the ratio is too different from the ratio we found in the
-                    // first non-zero weight, then that's suspect since we would expect
-                    // the ratio to be the same for all weights.
-                    ratio_from_found_difference > ratio_threshold and
-                        // We can also sanity check that the ratio is close to 1 since
-                        // that means the estimated and actual cost gradients are
-                        // roughly the same.
-                        ratio_from_matching_difference > ratio_threshold)
-                    {
-                        has_flawed_bias_cost_gradient = true;
-                        std.log.warn("Bias: (ratio: {d:.3}) estimated_bias_cost {d} is too different from our cost gradient calculated by our actual back propagation algorithm {d}", .{
-                            bias_ratio,
-                            estimated_bias_cost,
-                            actual_bias_cost,
-                        });
+                        const ratio_from_found_difference = @fabs(cost_ratio - found_estimated_to_actual_cost_gradient_ratio);
+                        const ratio_from_matching_difference = @fabs(cost_ratio - 1);
+                        if (
+                        // If the ratio is too different from the ratio we found in the
+                        // first non-zero weight, then that's suspect since we would expect
+                        // the ratio to be the same for all weights.
+                        ratio_from_found_difference > ratio_threshold and
+                            // We can also sanity check that the ratio is close to 1 since
+                            // that means the estimated and actual cost gradients are
+                            // roughly the same.
+                            ratio_from_matching_difference > ratio_threshold)
+                        {
+                            has_flawed_cost_gradient = true;
+                            std.log.warn("{s}: (ratio: {d:.3}) estimated_{0s}_cost {d} is too different " ++
+                                "from our cost gradient calculated by our actual back propagation algorithm {d}", .{
+                                gradient_to_compare.gradient_name,
+                                cost_ratio,
+                                estimated_cost,
+                                actual_cost,
+                            });
+                        }
                     }
                 }
             }
@@ -424,8 +383,9 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 std.log.warn("The first (estimated / actual) cost gradient ratio we found is {d} " ++
                     "(should be ~1 which means the estimated and actual match) " ++
                     "which means our actual calculated cost is some multiple of the true weight gradient. " ++
-                    "This doesn't affect the direction of the gradient (or probably accuracy of the descent " ++
-                    "step) but may indicate some slight problem." ++
+                    "If the ratio is the same across the entire gradient, this doesn't affect the direction " ++
+                    "of the gradient (or probably accuracy of the descent step) but may indicate some " ++
+                    "slight problem." ++
                     "\n    Estimated weight gradient: {d:.6}" ++
                     "\n       Actual weight gradient: {d:.6}" ++
                     "\n    Estimated bias gradient: {d:.6}" ++
@@ -438,16 +398,13 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 });
             }
 
-            if (has_flawed_weight_cost_gradient or has_flawed_bias_cost_gradient) {
+            if (has_flawed_cost_gradient) {
                 std.log.err("The actual cost gradient does not match our estimated cost gradient " ++
-                    "(flawed weight cost gradient: {}, flawed bias cost gradient: {}) " ++
-                    " which means our backpropagation algorithm is probably wrong." ++
+                    "which means our backpropagation algorithm is probably wrong." ++
                     "\n    Estimated weight gradient: {d:.6}" ++
                     "\n       Actual weight gradient: {d:.6}" ++
                     "\n    Estimated bias gradient: {d:.6}" ++
                     "\n       Actual bias gradient: {d:.6}", .{
-                    has_flawed_weight_cost_gradient,
-                    has_flawed_bias_cost_gradient,
                     estimated_cost_gradients.cost_gradient_weights,
                     test_layer.cost_gradient_weights,
                     estimated_cost_gradients.cost_gradient_biases,
@@ -455,9 +412,26 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 });
                 return error.FlawedCostGradients;
             }
+
+            if (was_relative_error_too_high) {
+                std.log.err("Relative error in cost gradients was too high meaning that " ++
+                    "some values in the estimated vs actual cost gradients were too different (see messages above)." ++
+                    "\n    Estimated weight gradient: {d:.6}" ++
+                    "\n       Actual weight gradient: {d:.6}" ++
+                    "\n    Estimated bias gradient: {d:.6}" ++
+                    "\n       Actual bias gradient: {d:.6}", .{
+                    estimated_cost_gradients.cost_gradient_weights,
+                    test_layer.cost_gradient_weights,
+                    estimated_cost_gradients.cost_gradient_biases,
+                    test_layer.cost_gradient_biases,
+                });
+                return error.RelativeErrorTooHigh;
+            }
         }
 
-        /// Used for gradient checking
+        /// Used for gradient checking to calculate the esimated gradient to compare
+        /// against (also known as the "numerical gradient" as opposed to the actual
+        /// "analytical gradient").
         ///
         /// This is extremely slow because we have to run the cost function for every weight
         /// and bias in the network against all of the training data points.
@@ -481,8 +455,6 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
 
             // We want h to be small but not too small to cause float point precision problems.
             const h: f64 = 0.0001;
-            const original_cost = try self.cost_many(training_data_batch, allocator);
-            _ = original_cost;
 
             // Calculate the cost gradient for the current weights.
             // We're using the the centered difference formula for better accuracy: (f(x + h) - f(x - h)) / 2h
