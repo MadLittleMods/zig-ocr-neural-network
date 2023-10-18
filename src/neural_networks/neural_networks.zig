@@ -216,7 +216,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // randomly/sparingly during training with a small batch
             //
             // Gradient checking to make sure our back propagration algorithm is working correctly
-            const should_gradient_check = true;
+            const should_gradient_check = false;
             if (should_gradient_check) {
                 try self.sanityCheckCostGradients(training_data_batch, allocator);
             }
