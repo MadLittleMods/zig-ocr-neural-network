@@ -127,7 +127,8 @@ pub const Layer = struct {
         num_input_nodes: usize,
         activation_function: ActivationFunction,
     ) void {
-        // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+        // XXX: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+        // but it's nicer to have a fixed seed so we can reproduce the same results.
         const seed = 123;
         var prng = std.rand.DefaultPrng.init(seed);
 

@@ -7,9 +7,8 @@ const time_utils = @import("utils/time_utils.zig");
 
 // Adjust as necessary. To make the program run faster, you can reduce the number of
 // images to train on and test on. To make the program more accurate, you can increase
-// the number of images to train on (also try playing with the value of `k` in the model
-// which influences K-nearest neighbor algorithm).
-const NUM_OF_IMAGES_TO_TRAIN_ON = 10000; // (max 60k)
+// the number of images to train on.
+const NUM_OF_IMAGES_TO_TRAIN_ON = 60000; // (max 60k)
 const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 
 // The number of times to run through the whole training data set.
@@ -28,7 +27,8 @@ pub fn main() !void {
         }
     }
 
-    // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+    // XXX: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+    // but it's nicer to have a fixed seed so we can reproduce the same results.
     const seed = 123;
     var prng = std.rand.DefaultPrng.init(seed);
     const random_instance = prng.random();
@@ -100,6 +100,20 @@ pub fn main() !void {
     while (true
     // current_epoch_index < TRAINING_EPOCHS
     ) : (current_epoch_index += 1) {
+        // We assume the data is already shuffled so we skip shuffling on the first
+        // epoch. Using a pre-shuffled dataset also gives us nice reproducible results
+        // during the first epoch when trying to debug things.
+        var shuffled_training_data_points = training_data_points;
+        if (current_epoch_index > 0) {
+            // Shuffle the data after each epoch
+            shuffled_training_data_points = try shuffle(random_instance, training_data_points, .{ .allocator = allocator });
+        }
+        defer {
+            if (current_epoch_index > 0) {
+                allocator.free(shuffled_training_data_points);
+            }
+        }
+
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
@@ -109,10 +123,10 @@ pub fn main() !void {
         // Instead of "gradient descent" with the full training set, using mini batches
         // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
-        while (batch_index < NUM_OF_IMAGES_TO_TRAIN_ON / BATCH_SIZE) : (batch_index += 1) {
+        while (batch_index < shuffled_training_data_points.len / BATCH_SIZE) : (batch_index += 1) {
             const batch_start_index = batch_index * BATCH_SIZE;
             const batch_end_index = batch_start_index + BATCH_SIZE;
-            const training_batch = training_data_points[batch_start_index..batch_end_index];
+            const training_batch = shuffled_training_data_points[batch_start_index..batch_end_index];
 
             // try neural_network.learn_estimate(
             try neural_network.learn(
@@ -151,8 +165,5 @@ pub fn main() !void {
                 });
             }
         }
-
-        // Shuffle the data after each epoch
-        shuffle(random_instance, training_data_points, .{});
     }
 }
