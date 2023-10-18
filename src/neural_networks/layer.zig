@@ -400,6 +400,8 @@ pub const Layer = struct {
         // > -- *Deep Learning* book page 296 (Ian Goodfellow)
         momentum: f64,
     ) void {
+        // TODO: Implement weight decay (also known as or similar to "L2 regularization"
+        // or "ridge regression") for purported effects that it "reduces overfitting"
         for (self.weights, 0..) |*weight, weight_index| {
             const velocity = (learn_rate * self.cost_gradient_weights[weight_index]) +
                 (momentum * self.weight_velocities[weight_index]);

@@ -200,6 +200,8 @@ pub fn main() !void {
 
             try neural_network.learn(
                 training_batch,
+                // TODO: Implement learn rate decay so we take more refined steps the
+                // longer we train for.
                 LEARN_RATE,
                 MOMENTUM,
                 allocator,
