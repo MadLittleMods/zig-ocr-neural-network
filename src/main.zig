@@ -14,7 +14,8 @@ const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
 // The number of times to run through the whole training data set.
 const TRAINING_EPOCHS = 1000;
 const BATCH_SIZE: u32 = 100;
-const LEARN_RATE: f64 = 0.05;
+const INIITIAL_LEARN_RATE: f64 = 0.05;
+const LEARN_RATE_DECAY: f64 = 0.075;
 const MOMENTUM = 0.9;
 
 pub fn main() !void {
@@ -58,17 +59,17 @@ pub fn main() !void {
     // Convert the normalized MNIST data into `DigitDataPoint` which are compatible with the neural network
     var training_data_points = try allocator.alloc(DigitDataPoint, normalized_raw_training_images.len);
     defer allocator.free(training_data_points);
-    for (normalized_raw_training_images, 0..) |raw_image, image_index| {
+    for (normalized_raw_training_images, 0..) |*raw_image, image_index| {
         training_data_points[image_index] = DigitDataPoint.init(
-            &raw_image,
+            raw_image,
             raw_mnist_data.training_labels[image_index],
         );
     }
     const testing_data_points = try allocator.alloc(DigitDataPoint, normalized_raw_test_images.len);
     defer allocator.free(testing_data_points);
-    for (normalized_raw_test_images, 0..) |raw_image, image_index| {
+    for (normalized_raw_test_images, 0..) |*raw_image, image_index| {
         testing_data_points[image_index] = DigitDataPoint.init(
-            &raw_image,
+            raw_image,
             raw_mnist_data.testing_labels[image_index],
         );
     }
@@ -131,7 +132,7 @@ pub fn main() !void {
 
             try neural_network.learn(
                 training_batch,
-                LEARN_RATE,
+                (1.0 / (1.0 + LEARN_RATE_DECAY * @as(f64, @floatFromInt(current_epoch_index)))) * INIITIAL_LEARN_RATE,
                 MOMENTUM,
                 allocator,
             );
@@ -139,31 +140,31 @@ pub fn main() !void {
             // std.log.debug("layer weights {d:.3}", .{neural_network.layers[1].weights});
             // std.log.debug("layer biases {d:.3}", .{neural_network.layers[1].biases});
 
-            if (current_epoch_index % 1 == 0 and
-                current_epoch_index != 0 and
-                batch_index == 0)
-            {
-                const current_timestamp_seconds = std.time.timestamp();
-                const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
-                const duration_string = try time_utils.formatDuration(
-                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
-                    allocator,
-                );
-                defer allocator.free(duration_string);
+            // if (current_epoch_index % 1 == 0 and
+            //     current_epoch_index != 0 and
+            //     batch_index == 0)
+            // {
+            const current_timestamp_seconds = std.time.timestamp();
+            const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
+            const duration_string = try time_utils.formatDuration(
+                runtime_duration_seconds * time_utils.ONE_SECOND_MS,
+                allocator,
+            );
+            defer allocator.free(duration_string);
 
-                const cost = try neural_network.cost_many(testing_data_points, allocator);
-                const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
-                    testing_data_points,
-                    allocator,
-                );
-                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with test points {d}", .{
-                    current_epoch_index,
-                    batch_index,
-                    duration_string,
-                    cost,
-                    accuracy,
-                });
-            }
+            const cost = try neural_network.cost_many(testing_data_points, allocator);
+            const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
+                testing_data_points,
+                allocator,
+            );
+            std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with test points {d}", .{
+                current_epoch_index,
+                batch_index,
+                duration_string,
+                cost,
+                accuracy,
+            });
+            // }
         }
     }
 }
