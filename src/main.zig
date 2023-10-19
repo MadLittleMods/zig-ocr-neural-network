@@ -1,6 +1,7 @@
 const std = @import("std");
 const shuffle = @import("zshuffle").shuffle;
 const mnist_data_utils = @import("mnist/mnist_data_utils.zig");
+const mnist_print_utils = @import("mnist/print_utils.zig");
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const time_utils = @import("utils/time_utils.zig");
@@ -45,6 +46,7 @@ pub fn main() !void {
         raw_mnist_data.training_images,
         allocator,
     );
+
     defer allocator.free(normalized_raw_training_images);
     const normalized_raw_test_images = try mnist_data_utils.normalizeMnistRawImageData(
         raw_mnist_data.testing_images,
@@ -76,6 +78,15 @@ pub fn main() !void {
         training_data_points.len,
         testing_data_points.len,
     });
+
+    // TODO: See what the images look like
+    const labeled_image_under_test = mnist_data_utils.LabeledImage{
+        .label = training_data_points[0].label,
+        .image = mnist_data_utils.Image{ .normalized_image = .{
+            .pixels = training_data_points[0].inputs[0..(28 * 28)].*,
+        } },
+    };
+    try mnist_print_utils.printLabeledImage(labeled_image_under_test, allocator);
 
     var neural_network = try neural_networks.NeuralNetwork(DigitDataPoint).init(
         &[_]u32{ 784, 100, digit_labels.len },
