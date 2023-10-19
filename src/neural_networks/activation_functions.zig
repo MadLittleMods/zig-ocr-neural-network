@@ -3,16 +3,35 @@ const std = @import("std");
 // Activation functions allows a layer to have a non-linear affect on the output so they
 // can bend the boundary around the data. Without this, the network would only be able
 // to separate data with a straight line.
+//
+// The choice of activation also doesn't matter *that* much. If the network training is
+// unstable, you can usually fix that with a choice of hyperparameters at maybe a 2-3x
+// cost in speed. You usually don't have a huge bump in the final accuracy you achieve.
+// Things other than activations usually dominate the cost.
 
-// TODO: In the future, we could add Sigmoid, Tanh, SiLU, Softmax, LeakyReLU, etc to try out
+// TODO: In the future, we could add Sigmoid, Tanh, SiLU, etc to try out
 
-// ReLU
+// ReLU (Rectified linear unit)
 // TODO: Visualize this (ASCII art)
-// TODO: Why would someone use this one?
 //
-// ReLU should probably only be used on hidden layers (TODO: Why?)
+// ReLU, for some reason, seems to result in really choppy loss surfaces that make it
+// finicky to get the network to converge without a lot of hyperparameter tuning. The
+// fact that ReLU never outputs negatives and has huge regions with a gradient of 0
+// causes problems. Any time you would reach for ReLU, you're probably better off with
+// one of the alternatives like Leaky ReLU or ELU.
 //
-// > The operation of ReLU is closer to the way our biological neurons work. (TODO: Why?)
+// ReLU enforces the inductive bias that small data should be ignored completely and
+// that big data should be propagated without changes (think about a dim light in a dark
+// room; the dark regions are just noise, no matter what your eyes think they perceive,
+// but the dim light carries information, and further processing should be presented
+// exactly that same information).
+//
+// ReLU was popularized as one of the first activations which was efficiently
+// implemented on GPUs and didn't have vanishing/exploding gradient issues in deep
+// networks.
+//
+// > The operation of ReLU is closer to the way our biological neurons work [(naive
+// > model of the visual cortex)].
 // >
 // > ReLU is non-linear and has the advantage of not having any backpropagation errors
 // > unlike the sigmoid function
@@ -42,7 +61,6 @@ pub const Relu = struct {
 
 // LeakyReLU
 // TODO: Visualize this (ASCII art)
-// TODO: Why would someone use this one?
 //
 // Like ReLU except when x < 0, LeakyReLU will have a small negative slope instead of a
 // hard zero. This slope is typically a small value like 0.01.
@@ -55,12 +73,14 @@ pub const Relu = struct {
 // >
 // > -- https://himanshuxd.medium.com/activation-functions-sigmoid-relu-leaky-relu-and-softmax-basics-for-neural-networks-and-deep-8d9c70eed91e
 pub const LeakyRelu = struct {
+    const alpha = 0.1;
+
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         const input = inputs[input_index];
         if (input > 0.0) {
             return input;
         }
-        return 0.1 * input;
+        return alpha * input;
     }
 
     pub fn derivative(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -68,13 +88,51 @@ pub const LeakyRelu = struct {
         if (input > 0.0) {
             return 1.0;
         }
-        return 0.1;
+        return alpha;
+    }
+};
+
+// ELU (Exponential Linear Unit)
+//
+// It looks like LeakyReLU except with a smooth transition in the corner instead of that
+// sharp transition that asymotically approaches -1. Not having a corner in the function
+// makes some training routines more stable, and even though there are few more
+// calculations involed with ELU, the network is usually large enough that matrix
+// multiplication dominates the CPU/time.
+//
+// Once a network is trained it's often easy to fine-tune it to use a more efficient
+// activation function. You can, for example, train it with ELU (which may be more
+// likely to succeed at the first pass), swap the activation with LeakyReLU and leave
+// everything else alone, and re-train on the same data with a tiny fraction of the
+// initial epochs. You now have a network that uses LeakyReLU for cheaper inference but
+// which didn't suffer instability during training.
+pub const ELU = struct {
+    const alpha = 1.0;
+
+    pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
+        const input = inputs[input_index];
+        if (input > 0.0) {
+            return input;
+        }
+
+        return alpha * (@exp(input) - 1.0);
+    }
+
+    pub fn derivative(_: @This(), inputs: []const f64, input_index: usize) f64 {
+        const input = inputs[input_index];
+        if (input > 0.0) {
+            return 1.0;
+        }
+
+        return alpha * @exp(input);
     }
 };
 
 // Sigmoid
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
+//
+// Sigmoid will constrain things between 0 and 1 and not have many values in between.
 pub const Sigmoid = struct {
     const Self = @This();
 
@@ -89,10 +147,10 @@ pub const Sigmoid = struct {
     }
 };
 
-// SoftMax squishes the output between [0, 1] (TODO: inclusive or exclusive?) and all
-// the resulting elements add up to 1. So in terms of this usage, this function will
-// tell you what percentage that the given value at the `input_index` makes up the total
-// sum of all the values in the array.
+// SoftMax squishes the output between [0, 1] and all the resulting elements add up to
+// 1. So in terms of usage, this function will tell you what percentage that the
+// given value at the `input_index` makes up the total sum of all the values in the
+// array.
 //
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
@@ -210,6 +268,21 @@ test "Slope check activation functions" {
         //     .input_index = 2,
         // },
         .{
+            .activation_function = ActivationFunction{ .elu = .{} },
+            .inputs = &[_]f64{ 0.1, 0.2, 0.3, 0.4, 0.5 },
+            .input_index = 2,
+        },
+        .{
+            .activation_function = ActivationFunction{ .elu = .{} },
+            .inputs = &[_]f64{ 0.1, 0.2, 0.3 },
+            .input_index = 2,
+        },
+        .{
+            .activation_function = ActivationFunction{ .elu = .{} },
+            .inputs = &[_]f64{ -0.2, 0.1, 0.0, 0.1, 0.2 },
+            .input_index = 2,
+        },
+        .{
             .activation_function = ActivationFunction{ .sigmoid = .{} },
             .inputs = &[_]f64{ 0.1, 0.2, 0.3, 0.4, 0.5 },
             .input_index = 2,
@@ -274,6 +347,7 @@ test "Slope check activation functions" {
 pub const ActivationFunction = union(enum) {
     relu: Relu,
     leaky_relu: LeakyRelu,
+    elu: ELU,
     sigmoid: Sigmoid,
     soft_max: SoftMax,
 
@@ -294,6 +368,7 @@ pub const ActivationFunction = union(enum) {
         return switch (self) {
             .relu => "ReLU",
             .leaky_relu => "LeakyReLU",
+            .elu => "ELU",
             .sigmoid => "Sigmoid",
             .soft_max => "SoftMax",
         };

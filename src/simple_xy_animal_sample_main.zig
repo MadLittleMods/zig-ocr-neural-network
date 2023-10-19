@@ -157,7 +157,8 @@ pub fn main() !void {
         }
     }
 
-    // TODO: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+    // XXX: We can use `@intCast(u64, std.time.timestamp())` to get a seed that changes
+    // but it's nicer to have a fixed seed so we can reproduce the same results.
     const seed = 123;
     var prng = std.rand.DefaultPrng.init(seed);
     const random_instance = prng.random();
@@ -168,7 +169,8 @@ pub fn main() !void {
         &[_]u32{ 2, 10, 10, animal_labels.len },
         neural_networks.ActivationFunction{
             // .relu = .{},
-            .leaky_relu = .{},
+            // .leaky_relu = .{},
+            .elu = .{},
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{ .soft_max = .{} },
@@ -180,10 +182,24 @@ pub fn main() !void {
     );
     defer neural_network.deinit(allocator);
 
-    var current_epoch_iteration_count: usize = 0;
+    var current_epoch_index: usize = 0;
     while (true
-    //current_epoch_iteration_count < TRAINING_EPOCHS
-    ) : (current_epoch_iteration_count += 1) {
+    //current_epoch_index < TRAINING_EPOCHS
+    ) : (current_epoch_index += 1) {
+        // We assume the data is already shuffled so we skip shuffling on the first
+        // epoch. Using a pre-shuffled dataset also gives us nice reproducible results
+        // during the first epoch when trying to debug things.
+        var shuffled_training_data_points: []AnimalDataPoint = &animal_training_data_points;
+        if (current_epoch_index > 0) {
+            // Shuffle the data after each epoch
+            shuffled_training_data_points = try shuffle(random_instance, &animal_training_data_points, .{ .allocator = allocator });
+        }
+        defer {
+            if (current_epoch_index > 0) {
+                allocator.free(shuffled_training_data_points);
+            }
+        }
+
         // Split the training data into mini batches so way we can get through learning
         // iterations faster. It does make the learning progress a bit noisy because the
         // cost landscape is a bit different for each batch but it's fast and apparently
@@ -193,10 +209,10 @@ pub fn main() !void {
         // Instead of "gradient descent" with the full training set, using mini batches
         // is called "stochastic gradient descent".
         var batch_index: u32 = 0;
-        while (batch_index < animal_training_data_points.len / BATCH_SIZE) : (batch_index += 1) {
+        while (batch_index < shuffled_training_data_points.len / BATCH_SIZE) : (batch_index += 1) {
             const batch_start_index = batch_index * BATCH_SIZE;
             const batch_end_index = batch_start_index + BATCH_SIZE;
-            const training_batch = animal_training_data_points[batch_start_index..batch_end_index];
+            const training_batch = shuffled_training_data_points[batch_start_index..batch_end_index];
 
             try neural_network.learn(
                 training_batch,
@@ -207,8 +223,8 @@ pub fn main() !void {
                 allocator,
             );
 
-            if (current_epoch_iteration_count % 10 == 0 and
-                current_epoch_iteration_count != 0 and
+            if (current_epoch_index % 10 == 0 and
+                current_epoch_index != 0 and
                 batch_index == 0)
             {
                 const current_timestamp_seconds = std.time.timestamp();
@@ -225,7 +241,7 @@ pub fn main() !void {
                     allocator,
                 );
                 std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, accuracy with testing points {d}", .{
-                    current_epoch_iteration_count,
+                    current_epoch_index,
                     batch_index,
                     duration_string,
                     cost,
@@ -235,7 +251,7 @@ pub fn main() !void {
         }
 
         // Graph how the neural network is learning over time.
-        if (current_epoch_iteration_count % 10000 == 0 and current_epoch_iteration_count != 0) {
+        if (current_epoch_index % 10000 == 0 and current_epoch_index != 0) {
             try graphNeuralNetwork(
                 AnimalDataPoint,
                 &neural_network,
@@ -244,9 +260,6 @@ pub fn main() !void {
                 allocator,
             );
         }
-
-        // Shuffle the data after each epoch
-        shuffle(random_instance, &animal_training_data_points, .{});
     }
 
     // Graph how the neural network looks at the end of training.
