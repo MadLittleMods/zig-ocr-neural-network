@@ -361,7 +361,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     "Our backpropagation algorithm is probably wrong.";
 
                 const even_error_message = "The relative error is the same across the entire gradient so even though " ++
-                    "the actual value is differnt that the estimated value, it doesn't affect the direction " ++
+                    "the actual value is different than the estimated value, it doesn't affect the direction " ++
                     "of the gradient or accuracy of the gradient descent step but may indicate some " ++
                     "slight problem.";
 
