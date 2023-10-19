@@ -58,17 +58,17 @@ pub fn main() !void {
     // Convert the normalized MNIST data into `DigitDataPoint` which are compatible with the neural network
     var training_data_points = try allocator.alloc(DigitDataPoint, normalized_raw_training_images.len);
     defer allocator.free(training_data_points);
-    for (normalized_raw_training_images, 0..) |raw_image, image_index| {
+    for (normalized_raw_training_images, 0..) |*raw_image, image_index| {
         training_data_points[image_index] = DigitDataPoint.init(
-            &raw_image,
+            raw_image,
             raw_mnist_data.training_labels[image_index],
         );
     }
     const testing_data_points = try allocator.alloc(DigitDataPoint, normalized_raw_test_images.len);
     defer allocator.free(testing_data_points);
-    for (normalized_raw_test_images, 0..) |raw_image, image_index| {
+    for (normalized_raw_test_images, 0..) |*raw_image, image_index| {
         testing_data_points[image_index] = DigitDataPoint.init(
-            &raw_image,
+            raw_image,
             raw_mnist_data.testing_labels[image_index],
         );
     }
