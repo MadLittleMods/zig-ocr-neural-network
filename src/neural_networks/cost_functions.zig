@@ -1,6 +1,8 @@
 const std = @import("std");
 
 // Cost functions are also known as loss functions.
+//
+// Equation references (cost and derivative): https://stats.stackexchange.com/questions/154879/a-list-of-cost-functions-used-in-neural-networks-alongside-applications/154880#154880
 
 // TODO: In the future, we could add negative log likelihood, MeanAbsoluteError (L1 loss),
 // RootMeanSquaredError, Focal Loss,  etc.
@@ -125,7 +127,8 @@ pub const CrossEntropy = struct {
             return 0.0;
         }
 
-        return (-1 * actual_output + expected_output) / (actual_output * (actual_output - 1));
+        // Alternative form: (actual_output - expected_output) / (actual_output * (1 - actual_output))
+        return (expected_output - actual_output) / (actual_output * (actual_output - 1));
     }
 };
 
