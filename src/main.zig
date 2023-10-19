@@ -129,7 +129,6 @@ pub fn main() !void {
             const batch_end_index = batch_start_index + BATCH_SIZE;
             const training_batch = shuffled_training_data_points[batch_start_index..batch_end_index];
 
-            // try neural_network.learn_estimate(
             try neural_network.learn(
                 training_batch,
                 LEARN_RATE,
