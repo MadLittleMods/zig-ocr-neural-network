@@ -139,31 +139,31 @@ pub fn main() !void {
             // std.log.debug("layer weights {d:.3}", .{neural_network.layers[1].weights});
             // std.log.debug("layer biases {d:.3}", .{neural_network.layers[1].biases});
 
-            // if (current_epoch_index % 1 == 0 and
-            //     current_epoch_index != 0 and
-            //     batch_index == 0)
-            // {
-            const current_timestamp_seconds = std.time.timestamp();
-            const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
-            const duration_string = try time_utils.formatDuration(
-                runtime_duration_seconds * time_utils.ONE_SECOND_MS,
-                allocator,
-            );
-            defer allocator.free(duration_string);
+            if (current_epoch_index % 1 == 0 and
+                current_epoch_index != 0 and
+                batch_index == 0)
+            {
+                const current_timestamp_seconds = std.time.timestamp();
+                const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
+                const duration_string = try time_utils.formatDuration(
+                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
+                    allocator,
+                );
+                defer allocator.free(duration_string);
 
-            const cost = try neural_network.cost_many(testing_data_points, allocator);
-            const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
-                testing_data_points,
-                allocator,
-            );
-            std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with test points {d}", .{
-                current_epoch_index,
-                batch_index,
-                duration_string,
-                cost,
-                accuracy,
-            });
-            // }
+                const cost = try neural_network.cost_many(testing_data_points, allocator);
+                const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
+                    testing_data_points,
+                    allocator,
+                );
+                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with test points {d}", .{
+                    current_epoch_index,
+                    batch_index,
+                    duration_string,
+                    cost,
+                    accuracy,
+                });
+            }
         }
     }
 }
