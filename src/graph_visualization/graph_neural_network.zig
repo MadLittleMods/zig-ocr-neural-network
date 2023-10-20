@@ -42,7 +42,7 @@ pub fn graphNeuralNetwork(
     }
 
     // Draw a ball for every training point
-    for (training_data_points) |data_point| {
+    for (training_data_points) |*data_point| {
         const label = data_point.label;
         var pixel_color: u24 = 0x000000;
         if (std.mem.eql(u8, label, "fish")) {
@@ -81,7 +81,7 @@ pub fn graphNeuralNetwork(
     }
 
     // Draw a ball for every test point
-    for (test_data_points) |data_point| {
+    for (test_data_points) |*data_point| {
         const label = data_point.label;
         var pixel_color: u24 = 0x000000;
         if (std.mem.eql(u8, label, "fish")) {
@@ -134,7 +134,7 @@ fn drawBallOnPixelCanvasForDataPoint(
         width: u32,
         height: u32,
     },
-    data_point: DataPointType,
+    data_point: *const DataPointType,
     ball_size: u32,
     draw_color: u24,
 ) void {

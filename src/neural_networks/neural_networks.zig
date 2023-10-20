@@ -148,7 +148,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             allocator: std.mem.Allocator,
         ) !f64 {
             var correct_count: f64 = 0;
-            for (testing_data_points) |testing_data_point| {
+            for (testing_data_points) |*testing_data_point| {
                 const result = try self.classify(testing_data_point.inputs, allocator);
                 if (DataPointType.checkLabelsEqual(result, testing_data_point.label)) {
                     correct_count += 1;
@@ -161,7 +161,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         /// Calculate the total cost of the network for a single data point
         pub fn cost_individual(
             self: *Self,
-            data_point: DataPointType,
+            data_point: *const DataPointType,
             allocator: std.mem.Allocator,
         ) !f64 {
             var outputs = try self.calculateOutputs(data_point.inputs, allocator);
@@ -177,7 +177,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             allocator: std.mem.Allocator,
         ) !f64 {
             var total_cost: f64 = 0.0;
-            for (data_points) |data_point| {
+            for (data_points) |*data_point| {
                 const cost_of_data_point = try self.cost_individual(data_point, allocator);
                 // std.log.debug("cost_of_data_point: {d}", .{cost_of_data_point});
                 total_cost += cost_of_data_point;
@@ -208,7 +208,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // Use the backpropagation algorithm to calculate the gradient of the cost function
             // (with respect to the network's weights and biases). This is done for each data point,
             // and the gradients are added together.
-            for (training_data_batch) |data_point| {
+            for (training_data_batch) |*data_point| {
                 try self.updateCostGradients(data_point, allocator);
             }
 
@@ -501,7 +501,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
 
         fn updateCostGradients(
             self: *Self,
-            data_point: DataPointType,
+            data_point: *const DataPointType,
             allocator: std.mem.Allocator,
         ) !void {
             // Feed data through the network to calculate outputs. Save all
