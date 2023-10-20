@@ -16,16 +16,26 @@ pub const MnistImageFileHeader = extern struct {
 };
 
 pub const RawImageData = [28 * 28]u8;
-pub const NormalizedrawImageData = [28 * 28]f64;
+pub const NormalizedRawImageData = [28 * 28]f64;
 
-pub const Image = extern struct {
+pub const RawImage = struct {
     width: u8 = 28,
     height: u8 = 28,
     pixels: RawImageData,
 };
+pub const NormalizedImage = struct {
+    width: u8 = 28,
+    height: u8 = 28,
+    pixels: NormalizedRawImageData,
+};
+
+pub const Image = union(enum) {
+    raw_image: RawImage,
+    normalized_image: NormalizedImage,
+};
 
 pub const LabelType = u8;
-pub const LabeledImage = extern struct {
+pub const LabeledImage = struct {
     label: LabelType,
     image: Image,
 };
@@ -196,8 +206,8 @@ pub fn getMnistData(
 pub fn normalizeMnistRawImageData(
     raw_images: []const RawImageData,
     allocator: std.mem.Allocator,
-) ![]NormalizedrawImageData {
-    const normalized_raw_images = try allocator.alloc(NormalizedrawImageData, raw_images.len);
+) ![]NormalizedRawImageData {
+    const normalized_raw_images = try allocator.alloc(NormalizedRawImageData, raw_images.len);
     for (raw_images, 0..) |raw_image, image_index| {
         for (raw_image, 0..) |pixel, pixel_index| {
             normalized_raw_images[image_index][pixel_index] = @as(f64, @floatFromInt(pixel)) / 255.0;
