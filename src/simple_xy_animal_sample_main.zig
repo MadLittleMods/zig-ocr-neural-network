@@ -251,7 +251,7 @@ pub fn main() !void {
         }
 
         // Graph how the neural network is learning over time.
-        if (current_epoch_index % 10000 == 0 and current_epoch_index != 0) {
+        if (current_epoch_index % 1000 == 0 and current_epoch_index != 0) {
             try graphNeuralNetwork(
                 AnimalDataPoint,
                 &neural_network,
