@@ -46,7 +46,6 @@ pub fn main() !void {
         raw_mnist_data.training_images,
         allocator,
     );
-
     defer allocator.free(normalized_raw_training_images);
     const normalized_raw_test_images = try mnist_data_utils.normalizeMnistRawImageData(
         raw_mnist_data.testing_images,
@@ -78,8 +77,8 @@ pub fn main() !void {
         training_data_points.len,
         testing_data_points.len,
     });
-
-    // TODO: See what the images look like
+    // Show what the first image looks like
+    std.log.debug("Here is what the first training data point looks like:", .{});
     const labeled_image_under_test = mnist_data_utils.LabeledImage{
         .label = training_data_points[0].label,
         .image = mnist_data_utils.Image{ .normalized_image = .{
@@ -104,9 +103,6 @@ pub fn main() !void {
         allocator,
     );
     defer neural_network.deinit(allocator);
-
-    std.log.debug("initial layer weights {d:.3}", .{neural_network.layers[1].weights});
-    std.log.debug("initial layer biases {d:.3}", .{neural_network.layers[1].biases});
 
     var current_epoch_index: usize = 0;
     while (true
@@ -147,13 +143,7 @@ pub fn main() !void {
                 allocator,
             );
 
-            // std.log.debug("layer weights {d:.3}", .{neural_network.layers[1].weights});
-            // std.log.debug("layer biases {d:.3}", .{neural_network.layers[1].biases});
-
-            if (current_epoch_index % 1 == 0 and
-                current_epoch_index != 0 and
-                batch_index == 0)
-            {
+            if (batch_index % 5 == 0) {
                 const current_timestamp_seconds = std.time.timestamp();
                 const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
                 const duration_string = try time_utils.formatDuration(
