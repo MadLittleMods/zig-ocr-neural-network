@@ -91,6 +91,9 @@ pub const Layer = struct {
         @memset(bias_velocities, 0);
 
         var weighted_input_sums = try allocator.alloc(f64, num_output_nodes);
+        // We don't need to initialize via @memset(weighted_input_sums, 0) because we
+        // will calculate the weighted input sum for each node in the layer before we
+        // use them.
 
         return Self{
             .num_input_nodes = num_input_nodes,
