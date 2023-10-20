@@ -2,7 +2,7 @@ const std = @import("std");
 
 /// .ppm
 // TODO: There is probably a better way to do this like printing directly a file.
-pub fn createPortablePixMap(pixels: []u24, width: u32, height: u32, allocator: std.mem.Allocator) ![]const u8 {
+pub fn createPortablePixMap(pixels: []const u24, width: u32, height: u32, allocator: std.mem.Allocator) ![]const u8 {
     var pixel_rows = try std.ArrayList([]const u8).initCapacity(allocator, height);
     defer pixel_rows.deinit();
     for (0..height) |height_index| {
