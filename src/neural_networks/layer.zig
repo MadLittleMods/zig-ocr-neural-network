@@ -162,7 +162,10 @@ pub const Layer = struct {
             //  - https://prateekvishnu.medium.com/xavier-and-he-normal-he-et-al-initialization-8e3d7a087528
             const desired_mean = 0;
             switch (activation_function) {
-                ActivationFunction.relu => {
+                ActivationFunction.relu,
+                ActivationFunction.leaky_relu,
+                ActivationFunction.elu,
+                => {
                     // He initialization
                     const desired_standard_deviation = @sqrt(2.0 / @as(f64, @floatFromInt(num_input_nodes)));
                     weight.* = normal_random_value * desired_standard_deviation + desired_mean;
