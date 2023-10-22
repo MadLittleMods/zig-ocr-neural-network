@@ -157,6 +157,11 @@ pub const Sigmoid = struct {
 // https://machinelearningmastery.com/softmax-activation-function-with-python/
 pub const SoftMax = struct {
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
+        // TODO: Since it's really easy for the exponents to exceed the max value of a
+        // float, we could subtract the max value from each input to make sure we don't
+        // overflow (numerically stable): `@exp(input - max(input))` (do this if we ever
+        // start seeing NaNs)
+
         var exp_sum: f64 = 0.0;
         for (inputs) |input| {
             exp_sum += @exp(input);
