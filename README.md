@@ -33,7 +33,8 @@ gunzip *.gz
 Tested with Zig 0.11.0
 
 With the OCR example, on my machine, I can complete 1 epoch of training in ~1 minute
-which gets to 94% accuracy (60k training images, 10k test images):
+which gets to 94% accuracy and creeps to 97% after a few more epochs (60k training
+images, 10k test images):
 ```sh
 $ zig build run-mnist_ocr
 ```

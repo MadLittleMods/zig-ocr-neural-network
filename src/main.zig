@@ -10,7 +10,12 @@ const time_utils = @import("utils/time_utils.zig");
 // images to train on and test on. To make the program more accurate, you can increase
 // the number of images to train on.
 const NUM_OF_IMAGES_TO_TRAIN_ON = 60000; // (max 60k)
-const NUM_OF_IMAGES_TO_TEST_ON = 100; // (max 10k)
+// The number of test points to use when we do a full cost breakdown after each epoch
+const NUM_OF_IMAGES_TO_TEST_ON = 10000; // (max 10k)
+// We only use a small portion of test points when calculating cost and accuracy while
+// going through the mini-batches in each epoch. This is to make the program run faster.
+// The full cost breakdown is done after each epoch.
+const NUM_OF_IMAGES_TO_QUICK_TEST_ON = 100; // (max 10k)
 
 // The number of times to run through the whole training data set.
 const TRAINING_EPOCHS = 1000;
@@ -152,19 +157,33 @@ pub fn main() !void {
                 );
                 defer allocator.free(duration_string);
 
-                const cost = try neural_network.cost_many(testing_data_points, allocator);
+                const cost = try neural_network.cost_many(testing_data_points[0..NUM_OF_IMAGES_TO_QUICK_TEST_ON], allocator);
                 const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
-                    testing_data_points,
+                    testing_data_points[0..NUM_OF_IMAGES_TO_QUICK_TEST_ON],
                     allocator,
                 );
-                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with test points {d}", .{
+                std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with {d} test points {d}", .{
                     current_epoch_index,
                     batch_index,
                     duration_string,
                     cost,
+                    NUM_OF_IMAGES_TO_QUICK_TEST_ON,
                     accuracy,
                 });
             }
         }
+
+        // Do a full cost break-down with all of the test points after each epoch
+        const cost = try neural_network.cost_many(testing_data_points, allocator);
+        const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
+            testing_data_points,
+            allocator,
+        );
+        std.log.debug("epoch end {d: <3} {s: >18} -> cost {d}, accuracy with *ALL* test points {d}", .{
+            current_epoch_index,
+            "",
+            cost,
+            accuracy,
+        });
     }
 }
