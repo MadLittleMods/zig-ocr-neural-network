@@ -32,16 +32,15 @@ gunzip *.gz
 
 Tested with Zig 0.11.0
 
-(currently does not work and I'm unable to see progress in training even after hours,
-tried many different hyper parameter changes):
+With the OCR example, on my machine, I can complete 1 epoch of training in ~1 minute
+which gets to 94% accuracy (60k training images, 10k test images):
 ```sh
 $ zig build run-mnist_ocr
 ```
 
-To run a basic graphable dataset example, you can use the
+To run a basic graphable dataset example that we can visualize, you can use the
 `simple_xy_animal_sample_main.zig` example which produces an image called
 `simple_xy_animal_graph.ppm` every 1,000 epochs showing the classification boundary.
-This demo actually seems to learn with the right hyper parameters:
 
 ```sh
 $ zig build run-simple_xy_animal_sample
