@@ -105,22 +105,54 @@ approaching a local minimum, our steps get smaller and smaller which helps us fr
 overshooting. This is also why our learn rate is some small number so we don't overshoot
 and bounce around the local minimum valley.
 
-The partial derivative of cost with respect to the **weight** of the 2nd connection. (this is the equation used in `calculateOutputLayerShareableNodeDerivatives(...)`)
+(equations sourced from [Sebastian Lague's video](https://youtu.be/hfMk-kjRv4c?si=uCiN2nx5k6M0aWO6&t=2230))
+
+The partial derivative of cost with respect to the **weight** of the 2nd connection.
+(the parts in blue are the pieces we're calculating in
+`calculateOutputLayerShareableNodeDerivatives(...)`)
+
 $`\begin{aligned}
-\frac{\partial c}{\partial w_2} &= \frac{\partial z_2}{\partial w_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
-\\&= a_1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
+\frac{\partial c}{\partial w_2} &=
+\frac{\partial z_2}{\partial w_2} &\times&
+\color{#107bc3}{\frac{\partial a_2}{\partial z_2}} &\times&
+\color{#107bc3}{\frac{\partial c}{\partial a_2}}
+\\&=
+a_1 &\times&
+\color{#107bc3}{\verb|activation_function.derivative|(z_2)} &\times&
+\color{#107bc3}{\verb|cost_function.derivative|(a_2, \mathrm{expected\_output})}
 \end{aligned}`$
 
-The partial derivative of cost with respect to the **weight** of the 1st connection. (this is the equation used in `calculateHiddenLayerShareableNodeDerivatives(...)`)
+The partial derivative of cost with respect to the **weight** of the 1st connection.
+(the parts in green are the pieces we're calculating in
+`calculateHiddenLayerShareableNodeDerivatives(...)`)
+
 $`\begin{aligned}
-\frac{\partial c}{\partial w_1} &= \frac{\partial z_1}{\partial w_1} &\times& \frac{\partial a_1}{\partial z_1} &\times& \frac{\partial z_2}{\partial a_1} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
-\\&= a_0 &\times& \verb|activation_function.derivative|(z_1) &\times& w_2 &\times& \verb|activation_function.derivative|(z_2)  &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
+\frac{\partial c}{\partial w_1} &=
+\frac{\partial z_1}{\partial w_1} &\times&
+\color{#008b6c}{\frac{\partial a_1}{\partial z_1}} &\times&
+\color{#008b6c}{\frac{\partial z_2}{\partial a_1}} &\times&
+\color{#008b6c}{\frac{\partial a_2}{\partial z_2}} &\times&
+\color{#008b6c}{\frac{\partial c}{\partial a_2}}
+\\&=
+a_0 &\times&
+\color{#008b6c}{\verb|activation_function.derivative|(z_1)} &\times&
+\color{#008b6c}{w_2} &\times&
+\color{#008b6c}{\verb|activation_function.derivative|(z_2)}  &\times&
+\color{#008b6c}{\verb|cost_function.derivative|(a_2, \mathrm{expected\_output})}
 \end{aligned}`$
 
-The partial derivative of cost with respect to **bias** of the 2nd node. (this applies to both hidden and output layers)
+The partial derivative of cost with respect to **bias** of the 2nd node. (this applies
+to both hidden and output layers)
+
 $`\begin{aligned}
-\frac{\partial c}{\partial b_2} &= \frac{\partial z_2}{\partial b_2} &\times& \frac{\partial a_2}{\partial z_2} &\times& \frac{\partial c}{\partial a_2}
-\\&= 1 &\times& \verb|activation_function.derivative|(z_2) &\times& \verb|cost_function.derivative|(a_2, \mathrm{expected\_output})
+\frac{\partial c}{\partial b_2} &=
+\frac{\partial z_2}{\partial b_2} &\times&
+\color{#107bc3}{\frac{\partial a_2}{\partial z_2}} &\times&
+\color{#107bc3}{\frac{\partial c}{\partial a_2}}
+\\&=
+1 &\times&
+\color{#107bc3}{\verb|activation_function.derivative|(z_2)} &\times&
+\color{#107bc3}{\verb|cost_function.derivative|(a_2, \mathrm{expected\_output})}
 \end{aligned}`$
 
 TODO: Chain rule for how these are derived (chain rule tree reference: https://youtu.be/tIeHLnjs5U8?si=WJwPWW_OOkkUGk_S&t=129)
