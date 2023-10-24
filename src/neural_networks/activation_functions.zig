@@ -152,14 +152,21 @@ pub const Sigmoid = struct {
 // given value at the `input_index` makes up the total sum of all the values in the
 // array.
 //
+// SoftMax is basically the multi-dimensional version of Sigmoid.
+//
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
-// https://machinelearningmastery.com/softmax-activation-function-with-python/
+//
+// Resources:
+//  - https://machinelearningmastery.com/softmax-activation-function-with-python/
+//  - https://themaverickmeerkat.com/2019-10-23-Softmax/
+//  - Softmax Layer from Scratch | Mathematics & Python Code (by The Independent Code),
+//    https://www.youtube.com/watch?v=AbLvJVwySEo
 pub const SoftMax = struct {
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         // TODO: Since it's really easy for the exponents to exceed the max value of a
         // float, we could subtract the max value from each input to make sure we don't
-        // overflow (numerically stable): `@exp(input - max(input))` (do this if we ever
+        // overflow (numerically stable): `@exp(input - max(inputs))` (do this if we ever
         // start seeing NaNs)
 
         var exp_sum: f64 = 0.0;
@@ -169,9 +176,16 @@ pub const SoftMax = struct {
 
         const exp_input = @exp(inputs[input_index]);
 
+        // SoftMax equation:
+        // $`
+        // y_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
+        // = \frac{\verb|exp_input|}{\verb|exp_sum|}
+        // `$
         return exp_input / exp_sum;
     }
 
+    // Partial derivative of the activation function with respect to the input at the
+    // given index (x_k).
     pub fn derivative(_: @This(), inputs: []const f64, input_index: usize) f64 {
         var exp_sum: f64 = 0.0;
         for (inputs) |input| {
@@ -179,6 +193,78 @@ pub const SoftMax = struct {
         }
 
         const exp_input = @exp(inputs[input_index]);
+
+        // Source: Help from Hans Musgrave and *Softmax Layer from Scratch | Mathematics
+        // & Python Code* (by The Independent Code),
+        // https://youtu.be/AbLvJVwySEo?si=uhGygTuChG8xMjGV&t=181
+        //
+        // Given the SoftMax equation:
+        // $`
+        // y_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
+        // = \frac{\verb|exp_input|}{\verb|exp_sum|}
+        // `$
+        //
+        // We can use the quotient rule ($`(\frac{u}{v})' = \frac{u'v - uv'}{v^2}`$) to
+        // find the derivative of the SoftMax equation with respect to a
+        // specific element of the input vector (x_k):
+        //
+        // For convenience, let $`\delta_{ik}`$ denote a symbol meaning $`1`$ if $`i = k`$ and $`0`$ otherwise.
+        //
+        // $`
+        // \begin{aligned}
+        // \delta_{ik} &= {\begin{cases}
+        //     1 & \text{if } i = k\\
+        //     0 & \text{otherwise.}
+        // \end{cases}}
+        // \\
+        // \\
+        // \frac{\partial y_i}{\partial x_k} &=
+        // \frac{
+        //     \delta_{ik}e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_k}
+        // }
+        // {
+        //     (\sum\limits_{j=1}^{n} e^{x_j})^2
+        // }
+        // \\&=
+        // y_i\delta_{ik} - y_iy_k
+        // \end{aligned}`$
+        //
+        // Or if we want to split up that delta (δ) condition, we will get:
+        //
+        // If k = i:
+        //
+        // $`\begin{aligned}
+        // \text{If } k = i \text{:}
+        // \\
+        // \frac{\partial y_i}{\partial x_k} &=
+        // \frac{
+        //     e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_i}
+        // }
+        // {
+        //     (\sum\limits_{j=1}^{n} e^{x_j})^2
+        // }
+        // = \frac{\verb|exp_input| * \verb|exp_sum| - \verb|exp_input| * \verb|exp_input|}{\verb|exp_sum| * \verb|exp_sum|}
+        // \\&=
+        // \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}} -
+        // (\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}})^2
+        // \\&=
+        // y_i - (y_i)^2
+        // \\&=
+        // y_i(1 - y_i)
+        // \end{aligned}`$
+        //
+        // If k != i:
+        //
+        // $`\begin{aligned}
+        // \text{If } k \ne i \text{:}
+        // \\
+        // \frac{\partial y_i}{\partial x_k} &=
+        // e^{x_i}\frac{-e^{x_k}}{(\sum\limits_{j=1}^{n} e^{x_j})^2}
+        // \\&=
+        // -\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}\frac{e^{x_k}}{\sum\limits_{j=1}^{n} e^{x_j}}
+        // \\&=
+        // -y_iy_k
+        // \end{aligned}`$
 
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
     }
@@ -336,17 +422,10 @@ test "Slope check activation functions" {
 
         // Check to make sure the actual slope is within a certain threshold of the
         // estimated slope
-        const threshold = 0.0001;
-        if (@fabs(estimated_slope - actual_slope) > threshold) {
-            std.debug.print("{s}: Expected actual slope {d} to be within {d} of the estimated slope: {d} (which we assume to ~correct)\n", .{
-                activation_function.getName(),
-                actual_slope,
-                threshold,
-                estimated_slope,
-            });
-            return error.FaultySlope;
-        }
+        const threshold = 1e-4;
+        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
     }
+    std.debug.print("\nsqrt(floatEps(T)) = {d}\n", .{std.math.sqrt(std.math.floatEps(f64))});
 }
 
 pub const ActivationFunction = union(enum) {

@@ -216,7 +216,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // randomly/sparingly during training with a small batch
             //
             // Gradient checking to make sure our back propagration algorithm is working correctly
-            const should_gradient_check = false;
+            const should_gradient_check = true;
             if (should_gradient_check) {
                 try self.sanityCheckCostGradients(training_data_batch, allocator);
             }
@@ -259,6 +259,17 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             );
             defer allocator.free(estimated_cost_gradients.cost_gradient_weights);
             defer allocator.free(estimated_cost_gradients.cost_gradient_biases);
+
+            std.log.err("asdf" ++
+                "\n    Estimated weight gradient: {d:.6}" ++
+                "\n       Actual weight gradient: {d:.6}" ++
+                "\n    Estimated bias gradient: {d:.6}" ++
+                "\n       Actual bias gradient: {d:.6}", .{
+                estimated_cost_gradients.cost_gradient_weights,
+                test_layer.cost_gradient_weights,
+                estimated_cost_gradients.cost_gradient_biases,
+                test_layer.cost_gradient_biases,
+            });
 
             const gradients_to_compare = [_]struct { gradient_name: []const u8, actual_gradient: []f64, estimated_gradient: []f64 }{
                 .{

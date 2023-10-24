@@ -161,6 +161,22 @@ TODO: Chain rule for how these are derived (chain rule tree reference: https://y
 When expanding the network with more nodes per layer, TODO
 
 
+## Other nerual network implementations
+
+ - https://github.com/SebLague/Neural-Network-Experiments
+    - This codebase has a great video going over all of the details/implementation of the
+      code: https://www.youtube.com/watch?v=hfMk-kjRv4c
+ - https://github.com/hmusgrave/zsmallnet
+ - https://github.com/albert-yu/mnist
+ - https://github.com/yettinmoor/mnist
+ - https://github.com/SilasMarvin/dnns-from-scratch-in-zig/
+ - https://github.com/garrisonhh/perceptron
+ - https://github.com/Deins/zig-nnet
+ - https://github.com/star-tek-mb/mnist-predictor
+ - Python and NumPy: https://github.com/TheIndependentCode/Neural-Network
+    - This codebase has a whole YouTube series behind it, ex. [*Softmax Layer from Scratch | Mathematics & Python Code*](https://www.youtube.com/watch?v=AbLvJVwySEo)
+
+
 ## Zig
 
 Libraries for linear algebra stuff (working with vectors, matrices).
