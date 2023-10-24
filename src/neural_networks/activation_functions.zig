@@ -152,7 +152,8 @@ pub const Sigmoid = struct {
 // given value at the `input_index` makes up the total sum of all the values in the
 // array.
 //
-// SoftMax is basically the multi-dimensional version of Sigmoid.
+/// SoftMax is basically the multi-dimensional version of Sigmoid. See the [developer
+/// notes on SoftMax](../../dev-notes.md) to see how the equation is derived.
 //
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
@@ -176,11 +177,7 @@ pub const SoftMax = struct {
 
         const exp_input = @exp(inputs[input_index]);
 
-        // SoftMax equation:
-        // $`
-        // y_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
-        // = \frac{\verb|exp_input|}{\verb|exp_sum|}
-        // `$
+        // SoftMax equation: f(x) = e^x / Σ(e^x)
         return exp_input / exp_sum;
     }
 
@@ -194,78 +191,12 @@ pub const SoftMax = struct {
 
         const exp_input = @exp(inputs[input_index]);
 
-        // Source: Help from Hans Musgrave and *Softmax Layer from Scratch | Mathematics
-        // & Python Code* (by The Independent Code),
-        // https://youtu.be/AbLvJVwySEo?si=uhGygTuChG8xMjGV&t=181
+        // See the [developer notes on SoftMax](../../dev-notes.md#softmax) to
+        // see how the equation is derived.
         //
-        // Given the SoftMax equation:
-        // $`
-        // y_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
-        // = \frac{\verb|exp_input|}{\verb|exp_sum|}
-        // `$
-        //
-        // We can use the quotient rule ($`(\frac{u}{v})' = \frac{u'v - uv'}{v^2}`$) to
-        // find the derivative of the SoftMax equation with respect to a
-        // specific element of the input vector (x_k):
-        //
-        // For convenience, let $`\delta_{ik}`$ denote a symbol meaning $`1`$ if $`i = k`$ and $`0`$ otherwise.
-        //
-        // $`
-        // \begin{aligned}
-        // \delta_{ik} &= {\begin{cases}
-        //     1 & \text{if } i = k\\
-        //     0 & \text{otherwise.}
-        // \end{cases}}
-        // \\
-        // \\
-        // \frac{\partial y_i}{\partial x_k} &=
-        // \frac{
-        //     \delta_{ik}e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_k}
-        // }
-        // {
-        //     (\sum\limits_{j=1}^{n} e^{x_j})^2
-        // }
-        // \\&=
-        // y_i\delta_{ik} - y_iy_k
-        // \end{aligned}`$
-        //
-        // Or if we want to split up that delta (δ) condition, we will get:
-        //
-        // If k = i:
-        //
-        // $`\begin{aligned}
-        // \text{If } k = i \text{:}
-        // \\
-        // \frac{\partial y_i}{\partial x_k} &=
-        // \frac{
-        //     e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_i}
-        // }
-        // {
-        //     (\sum\limits_{j=1}^{n} e^{x_j})^2
-        // }
-        // = \frac{\verb|exp_input| * \verb|exp_sum| - \verb|exp_input| * \verb|exp_input|}{\verb|exp_sum| * \verb|exp_sum|}
-        // \\&=
-        // \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}} -
-        // (\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}})^2
-        // \\&=
-        // y_i - (y_i)^2
-        // \\&=
-        // y_i(1 - y_i)
-        // \end{aligned}`$
-        //
-        // If k != i:
-        //
-        // $`\begin{aligned}
-        // \text{If } k \ne i \text{:}
-        // \\
-        // \frac{\partial y_i}{\partial x_k} &=
-        // e^{x_i}\frac{-e^{x_k}}{(\sum\limits_{j=1}^{n} e^{x_j})^2}
-        // \\&=
-        // -\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}\frac{e^{x_k}}{\sum\limits_{j=1}^{n} e^{x_j}}
-        // \\&=
-        // -y_iy_k
-        // \end{aligned}`$
-
+        // TODO: Is this correct? We use the k = i version of the equation because we
+        // only call the activation on on x_i nodes call the derivative with the same
+        // indexes.
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
     }
 };
