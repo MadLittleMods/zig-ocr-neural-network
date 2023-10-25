@@ -151,6 +151,9 @@ pub const Sigmoid = struct {
 // 1. So in terms of usage, this function will tell you what percentage that the
 // given value at the `input_index` makes up the total sum of all the values in the
 // array.
+
+/// SoftMax is basically the multi-dimensional version of Sigmoid. See the [developer
+/// notes on SoftMax](../../dev-notes.md) to see how the equation is derived.
 //
 /// SoftMax is basically the multi-dimensional version of Sigmoid. See the [developer
 /// notes on SoftMax](../../dev-notes.md) to see how the equation is derived.
