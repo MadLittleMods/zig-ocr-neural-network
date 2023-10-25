@@ -26,7 +26,7 @@ const MOMENTUM = 0.3;
 const animal_labels = [_][]const u8{
     "fish",
     "goat",
-    "TODO: Remove",
+    // "TODO: Remove",
 };
 const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 // Graph of animal data points:
@@ -178,8 +178,8 @@ pub fn main() !void {
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{
-            .soft_max = .{},
-            // .sigmoid = .{},
+            // .soft_max = .{},
+            .sigmoid = .{},
         },
         neural_networks.CostFunction{
             //.squared_error = .{},
@@ -255,6 +255,9 @@ pub fn main() !void {
                     accuracy,
                 });
             }
+
+            // TODO: remove
+            break;
         }
 
         // Graph how the neural network is learning over time.
@@ -267,6 +270,9 @@ pub fn main() !void {
                 allocator,
             );
         }
+
+        // TODO: remove
+        break;
     }
 
     // Graph how the neural network looks at the end of training.
