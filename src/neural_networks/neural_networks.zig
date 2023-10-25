@@ -328,7 +328,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     // Compare the error to the first non-zero error we found. If the
                     // error is too different then that's suspect since we would expect
                     // the error to be the same for all weights/biases.
-                    std.math.approxEqAbs(relative_error, found_relative_error, 1e-4) and
+                    std.math.approxEqAbs(f64, relative_error, found_relative_error, 1e-4) and
                         // We can also sanity check whether the error is close to 0
                         // since that means the estimated and actual cost gradients are
                         // roughly the same.
