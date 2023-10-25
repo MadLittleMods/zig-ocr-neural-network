@@ -164,9 +164,13 @@ When expanding the network with more nodes per layer, TODO
 
 #### Softmax
 
-Source: Help from Hans Musgrave and *Softmax Layer from Scratch | Mathematics
-& Python Code* (by The Independent Code),
-https://youtu.be/AbLvJVwySEo?si=uhGygTuChG8xMjGV&t=181
+Sources:
+
+ - Help from Hans Musgrave
+ - [*Softmax Layer from Scratch | Mathematics & Python
+   Code*](https://youtu.be/AbLvJVwySEo?si=uhGygTuChG8xMjGV&t=181) by The Independent
+   Code
+ - Dahal, Paras. (Jun 2017). [Softmax and Cross Entropy Loss. Paras Dahal.](https://www.parasdahal.com/softmax-crossentropy#derivative-of-softmax)
 
 Given the SoftMax equation:
 $`

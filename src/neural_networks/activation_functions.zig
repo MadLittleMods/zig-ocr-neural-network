@@ -159,10 +159,11 @@ pub const Sigmoid = struct {
 // TODO: Why would someone use this one?
 //
 // Resources:
-//  - https://machinelearningmastery.com/softmax-activation-function-with-python/
-//  - https://themaverickmeerkat.com/2019-10-23-Softmax/
+//  - Dahal, Paras. (Jun 2017). Softmax and Cross Entropy Loss. Paras Dahal.
+//    https://parasdahal.com/softmax-crossentropy.
 //  - Softmax Layer from Scratch | Mathematics & Python Code (by The Independent Code),
 //    https://www.youtube.com/watch?v=AbLvJVwySEo
+//  - https://themaverickmeerkat.com/2019-10-23-Softmax/
 pub const SoftMax = struct {
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         // TODO: Since it's really easy for the exponents to exceed the max value of a
@@ -194,9 +195,8 @@ pub const SoftMax = struct {
         // See the [developer notes on SoftMax](../../dev-notes.md#softmax) to
         // see how the equation is derived.
         //
-        // TODO: Is this correct? We use the k = i version of the equation because we
-        // only call the activation on on x_i nodes call the derivative with the same
-        // indexes.
+        // TODO: Why can we get away with only using the k = i version of the
+        // equation? Is this flawed?
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
     }
 };
