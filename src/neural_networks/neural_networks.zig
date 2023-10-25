@@ -298,14 +298,14 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     // >  - 1e-7 and less you should be happy.
                     // >
                     // > -- https://cs231n.github.io/neural-networks-3/#gradcheck
-                    if (relative_error > 0.01) {
+                    if (relative_error > 1e-2) {
                         std.log.err("Relative error for index {d} in {s} gradient was too high ({d}).", .{
                             gradient_index,
                             gradient_to_compare.gradient_name,
                             relative_error,
                         });
                         was_relative_error_too_high = true;
-                    } else if (relative_error > 0.0001) {
+                    } else if (relative_error > 1e-4) {
                         // > Note that it is possible to know if a kink was crossed in the
                         // > evaluation of the loss. This can be done by keeping track of
                         // > the identities of all "winners" in a function of form max(x,y);
@@ -324,16 +324,15 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                         });
                     }
 
-                    const difference_from_found_error = @fabs(relative_error - found_relative_error);
                     if (
                     // Compare the error to the first non-zero error we found. If the
                     // error is too different then that's suspect since we would expect
                     // the error to be the same for all weights/biases.
-                    difference_from_found_error > 0.0001 and
-                        // We can also sanity check that the error is close to 0 since
-                        // that means the estimated and actual cost gradients are
+                    std.math.approxEqAbs(relative_error, found_relative_error, 1e-4) and
+                        // We can also sanity check whether the error is close to 0
+                        // since that means the estimated and actual cost gradients are
                         // roughly the same.
-                        relative_error > 0.0001)
+                        relative_error > 1e-4)
                     {
                         has_uneven_cost_gradient = true;
                     }
@@ -355,7 +354,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                     test_layer.cost_gradient_biases,
                 });
                 return error.UnableToFindRelativeErrorOfEstimatedToActualGradient;
-            } else if (found_relative_error > 0.0001) {
+            } else if (found_relative_error > 1e-4) {
                 const uneven_error_message = "The relative error is the different across the entire gradient which " ++
                     "means the gradient is pointing in a totally different direction than it should. " ++
                     "Our backpropagation algorithm is probably wrong.";
