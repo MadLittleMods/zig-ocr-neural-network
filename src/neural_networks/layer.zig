@@ -264,6 +264,7 @@ pub const Layer = struct {
         expected_outputs: []const f64,
         allocator: std.mem.Allocator,
     ) ![]f64 {
+        // std.log.debug("calculateOutputLayerShareableNodeDerivatives() start ===================", .{});
         if (expected_outputs.len != self.num_output_nodes) {
             std.log.err("calculateOutputLayerShareableNodeDerivatives() was called with {d} expected_outputs but we expect it to match the same num_output_nodes={d}", .{
                 expected_outputs,
@@ -285,11 +286,19 @@ pub const Layer = struct {
                 self.layer_output_data.weighted_input_sums,
                 node_index,
             );
+            // std.log.debug("calculateOutputLayerShareableNodeDerivatives() for node_index={d} activation_derivative={d}", .{
+            //     node_index,
+            //     activation_derivative,
+            // });
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
                 const cost_derivative = cost_function.individual_derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
                 shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
+                // std.log.debug("calculateOutputLayerShareableNodeDerivatives() for node_index={d} cost_derivative={d}", .{
+                //     node_index,
+                //     cost_derivative,
+                // });
             } else {
                 @panic(
                     \\Cannot call `calculateOutputLayerShareableNodeDerivatives(...)`
@@ -298,6 +307,7 @@ pub const Layer = struct {
                 );
             }
         }
+        // std.log.debug("calculateOutputLayerShareableNodeDerivatives() end ===================", .{});
 
         return shareable_node_derivatives;
     }

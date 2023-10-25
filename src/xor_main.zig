@@ -6,7 +6,7 @@ const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig
 const time_utils = @import("utils/time_utils.zig");
 
 const TRAINING_EPOCHS = 2000;
-const BATCH_SIZE: u32 = 4;
+const BATCH_SIZE: u32 = 1;
 const LEARN_RATE: f64 = 0.1;
 // Since this problem space doesn't have much curvature, momentum tends to hurt us more
 // with higher values.
@@ -58,8 +58,8 @@ pub fn main() !void {
             .sigmoid = .{},
         },
         neural_networks.ActivationFunction{
-            // .soft_max = .{},
-            .sigmoid = .{},
+            .soft_max = .{},
+            // .sigmoid = .{},
         },
         neural_networks.CostFunction{
             .squared_error = .{},
@@ -68,6 +68,16 @@ pub fn main() !void {
         allocator,
     );
     defer neural_network.deinit(allocator);
+
+    for (neural_network.layers, 0..) |*layer, layer_index| {
+        std.log.debug("layer {d}:\n" ++
+            "\tweights {any}\n" ++
+            "\tbiases: {any}", .{
+            layer_index,
+            layer.weights,
+            layer.biases,
+        });
+    }
 
     var current_epoch_index: usize = 0;
     while (true
@@ -137,7 +147,7 @@ pub fn main() !void {
             }
 
             // TODO: remove
-            // break;
+            break;
         }
 
         // Graph how the neural network is learning over time.
@@ -152,7 +162,7 @@ pub fn main() !void {
         // }
 
         // TODO: remove
-        // break;
+        break;
     }
 
     // Graph how the neural network looks at the end of training.
