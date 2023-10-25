@@ -160,6 +160,102 @@ TODO: Chain rule for how these are derived (chain rule tree reference: https://y
 
 When expanding the network with more nodes per layer, TODO
 
+### Activation functions
+
+#### Softmax
+
+Sources:
+
+ - Help from Hans Musgrave
+ - [*Softmax Layer from Scratch | Mathematics & Python
+   Code*](https://youtu.be/AbLvJVwySEo?si=uhGygTuChG8xMjGV&t=181) by The Independent
+   Code
+ - Dahal, Paras. (Jun 2017). [Softmax and Cross Entropy Loss. Paras Dahal.](https://www.parasdahal.com/softmax-crossentropy#derivative-of-softmax)
+
+Given the SoftMax equation:
+$`
+y_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
+= \frac{\verb|exp_input|}{\verb|exp_sum|}
+`$
+
+We can use the quotient rule ($`(\frac{u}{v})' = \frac{u'v - uv'}{v^2}`$) to
+find the derivative of the SoftMax equation with respect to a
+specific element of the input vector ($`x_k`$):
+
+For convenience, let $`\delta_{ik}`$ denote a symbol meaning $`1`$ if $`i = k`$ and $`0`$ otherwise.
+
+$`
+\begin{aligned}
+\delta_{ik} &= {\begin{cases}
+    1 & \text{if } i = k\\
+    0 & \text{otherwise.}
+\end{cases}}
+\\
+\\
+\frac{\partial y_i}{\partial x_k} &=
+\frac{
+    \delta_{ik}e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_k}
+}
+{
+    (\sum\limits_{j=1}^{n} e^{x_j})^2
+}
+\\&=
+y_i\delta_{ik} - y_iy_k
+\end{aligned}`$
+
+Or if we want to split up that delta (δ) condition, we will get:
+
+$`\begin{aligned}
+\text{If } k = i \text{:}
+\\
+\frac{\partial y_i}{\partial x_k} &=
+\frac{
+    e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_i}
+}
+{
+    (\sum\limits_{j=1}^{n} e^{x_j})^2
+}
+= \frac{\verb|exp_input| * \verb|exp_sum| - \verb|exp_input| * \verb|exp_input|}{\verb|exp_sum| * \verb|exp_sum|}
+\\&=
+\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}} -
+(\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}})^2
+\\&=
+y_i - (y_i)^2
+\\&=
+y_i(1 - y_i)
+\end{aligned}`$
+
+$`\begin{aligned}
+\text{If } k \ne i \text{:}
+\\
+\frac{\partial y_i}{\partial x_k} &=
+e^{x_i}\frac{-e^{x_k}}{(\sum\limits_{j=1}^{n} e^{x_j})^2}
+\\&=
+-\frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}\frac{e^{x_k}}{\sum\limits_{j=1}^{n} e^{x_j}}
+\\&=
+-y_iy_k
+\end{aligned}`$
+
+
+
+## Other nerual network implementations
+
+ - https://github.com/SebLague/Neural-Network-Experiments
+    - This codebase has a great video going over all of the details/implementation of the
+      code: https://www.youtube.com/watch?v=hfMk-kjRv4c
+ - https://github.com/hmusgrave/zsmallnet
+ - https://github.com/albert-yu/mnist
+ - https://github.com/yettinmoor/mnist
+ - https://github.com/SilasMarvin/dnns-from-scratch-in-zig/
+    - Associated article: https://monadmonkey.com/dnns-from-scratch-in-zig
+ - https://github.com/garrisonhh/perceptron
+ - https://github.com/Deins/zig-nnet
+    - Has lots of nice comments
+ - https://github.com/star-tek-mb/mnist-predictor
+ - Python and NumPy: https://github.com/TheIndependentCode/Neural-Network
+    - This codebase has a whole YouTube series behind it, ex. [*Softmax Layer from Scratch | Mathematics & Python Code*](https://www.youtube.com/watch?v=AbLvJVwySEo)
+
+
 
 ## Zig
 

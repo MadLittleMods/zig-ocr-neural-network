@@ -151,15 +151,24 @@ pub const Sigmoid = struct {
 // 1. So in terms of usage, this function will tell you what percentage that the
 // given value at the `input_index` makes up the total sum of all the values in the
 // array.
+
+/// SoftMax is basically the multi-dimensional version of Sigmoid. See the [developer
+/// notes on SoftMax](../../dev-notes.md) to see how the equation is derived.
 //
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
-// https://machinelearningmastery.com/softmax-activation-function-with-python/
+//
+// Resources:
+//  - Dahal, Paras. (Jun 2017). Softmax and Cross Entropy Loss. Paras Dahal.
+//    https://parasdahal.com/softmax-crossentropy.
+//  - Softmax Layer from Scratch | Mathematics & Python Code (by The Independent Code),
+//    https://www.youtube.com/watch?v=AbLvJVwySEo
+//  - https://themaverickmeerkat.com/2019-10-23-Softmax/
 pub const SoftMax = struct {
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         // TODO: Since it's really easy for the exponents to exceed the max value of a
         // float, we could subtract the max value from each input to make sure we don't
-        // overflow (numerically stable): `@exp(input - max(input))` (do this if we ever
+        // overflow (numerically stable): `@exp(input - max(inputs))` (do this if we ever
         // start seeing NaNs)
 
         var exp_sum: f64 = 0.0;
@@ -169,9 +178,12 @@ pub const SoftMax = struct {
 
         const exp_input = @exp(inputs[input_index]);
 
+        // SoftMax equation: f(x) = e^x / Σ(e^x)
         return exp_input / exp_sum;
     }
 
+    // Partial derivative of the activation function with respect to the input at the
+    // given index (x_k).
     pub fn derivative(_: @This(), inputs: []const f64, input_index: usize) f64 {
         var exp_sum: f64 = 0.0;
         for (inputs) |input| {
@@ -180,6 +192,11 @@ pub const SoftMax = struct {
 
         const exp_input = @exp(inputs[input_index]);
 
+        // See the [developer notes on SoftMax](../../dev-notes.md#softmax) to
+        // see how the equation is derived.
+        //
+        // TODO: Why can we get away with only using the k = i version of the
+        // equation? Is this flawed?
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
     }
 };
