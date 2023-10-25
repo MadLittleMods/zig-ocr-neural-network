@@ -336,16 +336,8 @@ test "Slope check activation functions" {
 
         // Check to make sure the actual slope is within a certain threshold of the
         // estimated slope
-        const threshold = 0.0001;
-        if (@fabs(estimated_slope - actual_slope) > threshold) {
-            std.debug.print("{s}: Expected actual slope {d} to be within {d} of the estimated slope: {d} (which we assume to ~correct)\n", .{
-                activation_function.getName(),
-                actual_slope,
-                threshold,
-                estimated_slope,
-            });
-            return error.FaultySlope;
-        }
+        const threshold = 1e-4;
+        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
     }
 }
 
