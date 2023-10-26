@@ -38,7 +38,7 @@ const std = @import("std");
 //
 // https://machinelearningmastery.com/rectified-linear-activation-function-for-deep-learning-neural-networks/
 pub const Relu = struct {
-    pub const has_sparse_gradient = true;
+    pub const has_single_input_activation_function = true;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         const input = inputs[input_index];
@@ -75,7 +75,7 @@ pub const Relu = struct {
 // >
 // > -- https://himanshuxd.medium.com/activation-functions-sigmoid-relu-leaky-relu-and-softmax-basics-for-neural-networks-and-deep-8d9c70eed91e
 pub const LeakyRelu = struct {
-    pub const has_sparse_gradient = true;
+    pub const has_single_input_activation_function = true;
     const alpha = 0.1;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -110,7 +110,7 @@ pub const LeakyRelu = struct {
 // initial epochs. You now have a network that uses LeakyReLU for cheaper inference but
 // which didn't suffer instability during training.
 pub const ELU = struct {
-    pub const has_sparse_gradient = true;
+    pub const has_single_input_activation_function = true;
     const alpha = 1.0;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -138,7 +138,7 @@ pub const ELU = struct {
 //
 // Sigmoid will constrain things between 0 and 1 and not have many values in between.
 pub const Sigmoid = struct {
-    pub const has_sparse_gradient = true;
+    pub const has_single_input_activation_function = true;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         const input = inputs[input_index];
@@ -172,7 +172,7 @@ pub const Sigmoid = struct {
 //    https://www.youtube.com/watch?v=AbLvJVwySEo
 //  - https://themaverickmeerkat.com/2019-10-23-Softmax/
 pub const SoftMax = struct {
-    pub const has_sparse_gradient = false;
+    pub const has_single_input_activation_function = false;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         // TODO: Since it's really easy for the exponents to exceed the max value of a
@@ -410,14 +410,25 @@ pub const ActivationFunction = union(enum) {
     /// A derivative is just the slope of the activation function at a given point.
     pub fn derivative(self: @This(), inputs: []const f64, input_index: usize) f64 {
         return switch (self) {
-            inline else => |case| case.derivative(inputs, input_index),
+            inline else => |case| {
+                if (comptime !@TypeOf(case).has_single_input_activation_function) {
+                    @panic("Using the `derivative` on an activation function that doesn't have a single input is probably a mistake");
+                }
+
+                return case.derivative(inputs, input_index);
+            },
         };
     }
 
-    // Whether or
-    pub fn hasSparseGradient(self: @This()) bool {
+    // Returns whether or not the activation function uses a single input to produce a single
+    // output. This distinction is useful for optimizations and we can use this to determine
+    // whether we need to use the more expensive `gradient` function to accurately
+    // calculate the TODO
+    //
+    // Hint: Most activation functions are single-input activation functions (except for SoftMax).
+    pub fn hasSingleInputActivationFunction(self: @This()) bool {
         return switch (self) {
-            inline else => |case| @TypeOf(case).has_sparse_gradient,
+            inline else => |case| @TypeOf(case).has_single_input_activation_function,
         };
     }
 
@@ -475,7 +486,7 @@ pub const ActivationFunction = union(enum) {
                 // derivatives along the diagonal of the Jacobian matrix. This will have
                 // the same effect as using the shortcut when just using the derivative
                 // function for single-input activation functions.
-                else if (self.hasSparseGradient()) {
+                else if (comptime @TypeOf(case).has_single_input_activation_function) {
                     var results = try allocator.alloc(f64, inputs.len);
                     @memset(results, 0);
                     // Given the `input_index`, we know what row of the Jacobian matrix
@@ -489,8 +500,9 @@ pub const ActivationFunction = union(enum) {
                     return results;
                 } else {
                     std.log.err(
-                        "Activation function ({s}) does not have a gradient function and does " ++
-                            "not have a sparse gradient so we can't provide a default implementation",
+                        "Activation function ({s}) does not have a `gradient` function and does " ++
+                            "not have a sparse gradient so we can't provide a default implementation " ++
+                            "using the `derivative` function",
                         .{self.getName()},
                     );
                     return error.ActivationFunctionDoesNotHaveGradientFunction;
