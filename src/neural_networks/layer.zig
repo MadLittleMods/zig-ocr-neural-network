@@ -302,6 +302,9 @@ pub const Layer = struct {
 
         for (0..self.num_output_nodes) |node_index| {
             switch (self.activation_function.hasSparseGradient()) {
+                // If the activation function produces a sparse matrix then we can
+                //
+                // [ 1]
                 true => {
                     // Evaluate the partial derivative of activation for the current node with respect to its weighted input
                     // da_2/dz_2 = activation_function.derivative(z_2)
@@ -320,6 +323,8 @@ pub const Layer = struct {
                         allocator,
                     );
                     defer allocator.free(activation_ki_derivatives);
+                    // This is just a dot product of the activation_ki_derivatives and cost_derivatives.
+                    //
                     for (activation_ki_derivatives, 0..) |_, gradient_index| {
                         shareable_node_derivatives[node_index] += activation_ki_derivatives[gradient_index] * cost_derivatives[gradient_index];
                     }
@@ -356,10 +361,18 @@ pub const Layer = struct {
             }
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_1/dz_1 = activation_function.derivative(z_1)
-            shareable_node_derivative *= self.activation_function.derivative(
-                self.layer_output_data.weighted_input_sums,
-                node_index,
-            );
+            if (self.activation_function.hasSparseGradient()) {
+                shareable_node_derivative *= self.activation_function.derivative(
+                    self.layer_output_data.weighted_input_sums,
+                    node_index,
+                );
+            } else {
+                // We don't expect people to use something like SoftMax (has non-sparse
+                // gradient) on a hidden layer but if someone misconfigures their
+                // network (or just wants to try it out) we should at least give them a
+                // helpful error message.
+                @panic("TODO: Handle activation on hidden layer which produces non-sparse gradients!");
+            }
             shareable_node_derivatives[node_index] = shareable_node_derivative;
         }
         return shareable_node_derivatives;

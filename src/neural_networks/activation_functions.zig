@@ -401,12 +401,6 @@ pub const ActivationFunction = union(enum) {
     sigmoid: Sigmoid,
     soft_max: SoftMax,
 
-    pub fn hasSparseGradient(self: @This()) bool {
-        return switch (self) {
-            inline else => |case| @TypeOf(case).has_sparse_gradient,
-        };
-    }
-
     pub fn activate(self: @This(), inputs: []const f64, input_index: usize) f64 {
         return switch (self) {
             inline else => |case| case.activate(inputs, input_index),
@@ -420,18 +414,86 @@ pub const ActivationFunction = union(enum) {
         };
     }
 
-    /// TODO
-    pub fn gradient(self: @This(), inputs: []const f64, input_index: usize, allocator: std.mem.Allocator) ![]f64 {
+    // Whether or
+    pub fn hasSparseGradient(self: @This()) bool {
+        return switch (self) {
+            inline else => |case| @TypeOf(case).has_sparse_gradient,
+        };
+    }
+
+    // The gradient function produces a row vector of derivatives that we can think of
+    // as a row in Jacobian matrix (m columns, n rows) where m and n is the number of
+    // inputs. Each item in the row is the partial derivative of the activation function
+    // with respect to the input at the given index (x_k).
+    //
+    // Jacobian matrix example:
+    // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
+    // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
+    // ┃                          ┃
+    // ┃  𝝏y_2  𝝏y_2  𝝏y_2  𝝏y_2  ┃
+    // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
+    // ┃                          ┃
+    // ┃  𝝏y_3  𝝏y_3  𝝏y_3  𝝏y_3  ┃
+    // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
+    // ┃                          ┃
+    // ┃  𝝏y_4  𝝏y_4  𝝏y_4  𝝏y_4  ┃
+    // ┗  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┛
+    //
+    // Note: Single-input activation functions do not need to define a gradient function
+    // and should use the shortcut as described below.
+    //
+    // Single-input activation functions produce a sparse Jacobian gradient where only
+    // the diagonal elements are defined. We can use this characteristic to efficiently
+    // shortcut and just use a single `derivative` since the other elements end up
+    // getting multiplied by 0 and don't contribute to the result anyway.
+    //
+    // Sparse Jacobian matrix where only the diagonal elements are defined:
+    // ┏  𝝏y_1   0     0     0    ┓
+    // ┃  𝝏x_1                    ┃
+    // ┃                          ┃
+    // ┃   0    𝝏y_2   0     0    ┃
+    // ┃        𝝏x_2              ┃
+    // ┃                          ┃
+    // ┃   0     0    𝝏y_3   0    ┃
+    // ┃              𝝏x_3        ┃
+    // ┃                          ┃
+    // ┃   0     0     0    𝝏y_4  ┃
+    // ┗                    𝝏x_4  ┛
+    pub fn gradient(
+        self: @This(),
+        inputs: []const f64,
+        input_index: usize,
+        allocator: std.mem.Allocator,
+    ) ![]f64 {
         return switch (self) {
             inline else => |case| {
+                // Use the gradient function if the activation function has one
                 if (comptime std.meta.trait.hasFn("gradient")(@TypeOf(case))) {
                     return case.gradient(inputs, input_index, allocator);
-                } else {
+                }
+                // Otherwise, we can provide a default implementation that just puts the
+                // derivatives along the diagonal of the Jacobian matrix. This will have
+                // the same effect as using the shortcut when just using the derivative
+                // function for single-input activation functions.
+                else if (self.hasSparseGradient()) {
                     var results = try allocator.alloc(f64, inputs.len);
                     @memset(results, 0);
+                    // Given the `input_index`, we know what row of the Jacobian matrix
+                    // we're on; so we can just put the derivative along the diagonal by placing
+                    // at the `input_index` of that row.
+                    //
+                    // Fore example, when `inputs.len = 4` and input_index = 3`
+                    // -> [0, 0, derivative, 0]
                     results[input_index] = self.derivative(inputs, input_index);
 
                     return results;
+                } else {
+                    std.log.err(
+                        "Activation function ({s}) does not have a gradient function and does " ++
+                            "not have a sparse gradient so we can't provide a default implementation",
+                        .{self.getName()},
+                    );
+                    return error.ActivationFunctionDoesNotHaveGradientFunction;
                 }
             },
         };
