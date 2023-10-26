@@ -200,18 +200,19 @@ x_4\\
 
 Let's use the `Sigmoid` activation function as an example:
 
-$`y_i = \verb|Sigmoid|(x_i) = \frac{}{1 + exp(-x_i)}`$
+$`y_i = \verb|Sigmoid|(x_i) = \frac{1}{1 + exp(-x_i)}`$
 
-And then if we want to find the partial derivative of the activation function ($`y_i`$)
+And then if we want to find the partial derivative of the activation function of $`y_i`$
 with respect to all of the `inputs` of each node in the layer ($`\frac{\partial
-y_i}{\partial x_k}`$), we can use a Jacobian matrix.
+y_i}{\partial x_k}`$), we can use a Jacobian matrix. To calculate the first element,
+it's comes out to a normal derivative since $`x_1`$ is used in the function.
 
 $`\frac{\partial y_1}{\partial x_1} 1 / (1 + exp(-x_1)) = y_1(1 - y_1)`$
 
-The partial derivitive of the activation function with respect to $`x_2`$. Because we
-don't see any $`x_2`$ in the equation, changing $`x_2`$ has no effect on the output of
-the function. So the partial derivative is 0. Same thing happens when we look for
-$`x_3`$, and $`x_4`$.
+Then to fill out the rest of the first row in the matrix, we find partial derivitive of
+the activation function with respect to $`x_2`$; Because we don't see any $`x_2`$ in the
+equation, changing $`x_2`$ has no effect on the output of the function. So the partial
+derivative is 0. Same thing happens when we look for $`x_3`$, and $`x_4`$.
 
 $`\frac{\partial y_1}{\partial x_2} 1 / (1 + exp(-x_1)) = 0`$
 
@@ -219,7 +220,8 @@ $`\frac{\partial y_1}{\partial x_3} 1 / (1 + exp(-x_1)) = 0`$
 
 $`\frac{\partial y_1}{\partial x_4} 1 / (1 + exp(-x_1)) = 0`$
 
-If we repeat that for each row, the Jacobian matrix ends up looking like:
+If we repeat this process for each row, the Jacobian matrix ends up looking like the
+following sparse matrix with only the diagonal $`k = i`$ elements as non-zero values:
 
 $`
 \begin{bmatrix}
@@ -230,22 +232,20 @@ $`
 \end{bmatrix}
 `$
 
-
-TODO
-
-So for example during backpropagation, when we multiply the cost vector by this Jacobian,
-most of the terms just drop away because they're multiplied by 0 and we're just left
-with the diagonal terms anyway.
-
-
-
+So for example during backpropagation, when we multiply the cost vector by this
+Jacobian, most of the terms just drop away because they're multiplied by 0 and we're
+just left with the diagonal terms anyway. And is equivalent to just multiplying the cost
+vector by the result of the `deriviative` function for each node which involves a lot
+less computation (efficient shortcut).
 
 
 #### Softmax
 
 Sources:
 
- - Help from Hans Musgrave
+ - Special shoutout to Hans Musgrave ([@hmusgrave](https://github.com/hmusgrave)) for
+   the immense amount of help to get my head around these concepts as I got stuck
+   through this process.
  - [*Softmax Layer from Scratch | Mathematics & Python
    Code*](https://youtu.be/AbLvJVwySEo?si=uhGygTuChG8xMjGV&t=181) by The Independent
    Code
@@ -261,12 +261,12 @@ We can use the quotient rule ($`(\frac{u}{v})' = \frac{u'v - uv'}{v^2}`$) to
 find the derivative of the SoftMax equation with respect to a
 specific element of the input vector ($`x_k`$):
 
-For convenience, let $`\delta_{ik}`$ denote a symbol meaning $`1`$ if $`i = k`$ and $`0`$ otherwise.
+For convenience, let $`\delta_{ik}`$ denote a symbol meaning $`1`$ if $`k = i`$ and $`0`$ otherwise.
 
 $`
 \begin{aligned}
 \delta_{ik} &= {\begin{cases}
-    1 & \text{if } i = k\\
+    1 & \text{if } k = i\\
     0 & \text{otherwise.}
 \end{cases}}
 \\
@@ -282,7 +282,7 @@ $`
 y_i\delta_{ik} - y_iy_k
 \end{aligned}`$
 
-Or if we want to split up that delta (δ) condition, we will get:
+Or if we want to split up that delta (δ) condition into two separate equations, we will get:
 
 $`\begin{aligned}
 \text{If } k = i \text{:}
@@ -347,9 +347,9 @@ $`
 `$
 
 In the context of backpropagation, we need to end up with a single value for each node
-$`i`$. With a single-input activation function we just multiply the scalar activation
-function `derivative` by the partial derivative of the cost with respect to the input of
-that node (($`\frac{\partial C}{\partial y_i}`$)).
+$`i`$. With a single-input activation function we just multiply the scalar return value
+from activation function `derivative` by the partial derivative of the cost with respect
+to the input of that node (($`\frac{\partial C}{\partial y_i}`$)).
 
 But when using a multi-input activation function like `SoftMax`, we need to take dot
 product the activation `gradient` with the whole cost vector ($`\frac{\partial
