@@ -172,6 +172,8 @@ pub const Sigmoid = struct {
 //    https://www.youtube.com/watch?v=AbLvJVwySEo
 //  - https://themaverickmeerkat.com/2019-10-23-Softmax/
 pub const SoftMax = struct {
+    // SoftMax is not a single-input activation function. It uses all of the given `inputs`
+    // to produce a single output. So we need to make sure to define a `gradient` function.
     pub const has_single_input_activation_function = false;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -191,8 +193,27 @@ pub const SoftMax = struct {
         return exp_input / exp_sum;
     }
 
-    // Partial derivative of the activation function with respect to the input at the
-    // given index (x_k).
+    // Returns the partial derivative of the activation function with respect to the
+    // input at the given index (x_k). This function only produces the diagonal elements
+    // of the Jacobian matrix (where k = i) of the row specified by `input_index`.
+    //
+    // ┏  𝝏y_1   0     0     0    ┓
+    // ┃  𝝏x_1                    ┃
+    // ┃                          ┃
+    // ┃   0    𝝏y_2   0     0    ┃
+    // ┃        𝝏x_2              ┃
+    // ┃                          ┃
+    // ┃   0     0    𝝏y_3   0    ┃
+    // ┃              𝝏x_3        ┃
+    // ┃                          ┃
+    // ┃   0     0     0    𝝏y_4  ┃
+    // ┗                    𝝏x_4  ┛
+    //
+    // This is only defined for completeness sake but backprpagation should use the
+    // `gradient` function instead. Empirically (in practice), using the `derivative`
+    // function will allow the neural network to converge successfully but it's
+    // unclear/not measured on how much this causes us to wander around the loss
+    // surface.
     pub fn derivative(_: @This(), inputs: []const f64, input_index: usize) f64 {
         var exp_sum: f64 = 0.0;
         for (inputs) |input| {
@@ -203,14 +224,41 @@ pub const SoftMax = struct {
 
         // See the [developer notes on SoftMax](../../dev-notes.md#softmax) to
         // see how the equation is derived.
-        //
-        // TODO: Why can we get away with only using the k = i version of the
-        // equation? Is this flawed?
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
     }
 
-    // A gradient is just a vector of derivatives.
-    pub fn gradient(_: @This(), inputs: []const f64, input_index: usize, allocator: std.mem.Allocator) ![]f64 {
+    // Returns all of the partial derivatives of the activation function with respect to
+    // the input at the given index (x_k). This function returns a single row specified
+    // by `input_index` of the Jacobian matrix.
+    //
+    // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
+    // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
+    // ┃                          ┃
+    // ┃  𝝏y_2  𝝏y_2  𝝏y_2  𝝏y_2  ┃
+    // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
+    // ┃                          ┃
+    // ┃  𝝏y_3  𝝏y_3  𝝏y_3  𝝏y_3  ┃
+    // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
+    // ┃                          ┃
+    // ┃  𝝏y_4  𝝏y_4  𝝏y_4  𝝏y_4  ┃
+    // ┗  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┛
+    //
+    // A gradient is just a vector (list) of derivatives.
+    //
+    // Because the SoftMax activation function uses multiple inputs to produce a single
+    // output, when we use a Jacobian matrix to find the derivative of the activation
+    // function, all of elements will be defined (full, not sparse). This means that we
+    // need to use the `gradient` function to accurately calculate the results during
+    // backpropagation. Since this is SoftMax, this activation function will be used as
+    // the final step of the output layer and will be dot producted with the
+    // cost/loss/error vector to calculate the partial derivaties of the cost with
+    // respect to the input (see `shareable_node_derivatives`).
+    pub fn gradient(
+        _: @This(),
+        inputs: []const f64,
+        input_index: usize,
+        allocator: std.mem.Allocator,
+    ) ![]f64 {
         var results = try allocator.alloc(f64, inputs.len);
 
         var exp_sum: f64 = 0.0;
@@ -225,11 +273,12 @@ pub const SoftMax = struct {
 
             const exp_i = @exp(inputs[i]);
 
+            // See the [developer notes on SoftMax](../../dev-notes.md#softmax) to
+            // see how the equation is derived.
             const numerator = (delta * exp_i * exp_sum) - (exp_i * exp_k);
             const denominator = exp_sum * exp_sum;
 
             const result_ki = numerator / denominator;
-            // std.log.debug("softmax_sum(k={d}, i={d}): {d}", .{ k, i, result_ki });
             results[i] = result_ki;
         }
 
@@ -412,7 +461,16 @@ pub const ActivationFunction = union(enum) {
         return switch (self) {
             inline else => |case| {
                 if (comptime !@TypeOf(case).has_single_input_activation_function) {
-                    @panic("Using the `derivative` on an activation function that doesn't have a single input is probably a mistake");
+                    std.log.err(
+                        "Using the `derivative` on an {s} activation function that " ++
+                            "doesn't have a single input is probably a mistake since it " ++
+                            "will give inaccurate results if you're trying to use this with backpropagation",
+                        .{self.getName()},
+                    );
+                    @panic(
+                        "It's probably a mistake to use the `derivative` function with this " ++
+                            "activation function that uses multiple inputs (see message above)",
+                    );
                 }
 
                 return case.derivative(inputs, input_index);
@@ -422,8 +480,8 @@ pub const ActivationFunction = union(enum) {
 
     // Returns whether or not the activation function uses a single input to produce a single
     // output. This distinction is useful for optimizations and we can use this to determine
-    // whether we need to use the more expensive `gradient` function to accurately
-    // calculate the TODO
+    // whether we need to use the more expensive `gradient` function or an efficient shortcut
+    // with the `derivative` function.
     //
     // Hint: Most activation functions are single-input activation functions (except for SoftMax).
     pub fn hasSingleInputActivationFunction(self: @This()) bool {

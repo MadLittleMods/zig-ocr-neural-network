@@ -258,7 +258,22 @@ pub const Layer = struct {
     }
 
     /// Calculate the "shareable_node_derivatives" for this output layer
-    /// TODO: Explain "shareable_node_derivatives"
+    ///
+    /// "shareable_node_derivatives" are essentially the partial derivatives of the cost
+    /// with respect to the input of this layer (𝝏C/𝝏x) that get passed down to the other
+    /// layers as we go backwards via backpropagation.
+    ///
+    /// Since the layers are chained together, the partial derivative of the cost with
+    /// the respect to the input of this layer (𝝏C/𝝏x) is the same as the partial
+    /// derivative of the cost with respect to the output (𝝏C/𝝏y) of the preceding
+    /// layer. We pass the "shareable_node_derivatives" of this layer down to the
+    /// preceding layer and continue the cycle of transforming 𝝏C/𝝏y to the 𝝏C/𝝏x for
+    /// the previous layer. And use `shareable_node_derivatives` as part of the
+    /// calcuations for adjusting the weights/biases as we go.
+    ///
+    /// For the output layer, we first start with the partial derivatives of the cost
+    /// with respect to the activation output. Then we transform those into the partial
+    /// derivatives of the cost with respect to input of each node.
     pub fn calculateOutputLayerShareableNodeDerivatives(
         self: *Self,
         expected_outputs: []const f64,
@@ -347,6 +362,11 @@ pub const Layer = struct {
                 // ┃   0     0     0    𝝏y_4  ┃     ┃  𝝏C    ┃
                 // ┗                    𝝏x_4  ┛     ┗  𝝏y_4  ┛
                 //
+                // For example to calculate `shareable_node_derivatives[0]`,
+                // it would look like:
+                // shareable_node_derivatives[0] = 𝝏y_1 * 𝝏C
+                //                                 𝝏x_1   𝝏y_1
+                //
                 // Since all of those extra multiplictions fall away anyway against the
                 // sparse matrix, to avoid the vector/matrix multiplication
                 // computational complexity, we can see that we only need find the
@@ -379,6 +399,11 @@ pub const Layer = struct {
                 // ┃                          ┃     ┃        ┃
                 // ┃  𝝏y_4  𝝏y_4  𝝏y_4  𝝏y_4  ┃     ┃  𝝏C    ┃
                 // ┗  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┛     ┗  𝝏y_4  ┛
+                //
+                // For example to calculate `shareable_node_derivatives[0]`,
+                // it would look like:
+                // shareable_node_derivatives[0] = 𝝏y_1 * 𝝏C    +  𝝏y_1 * 𝝏C    +  𝝏y_1 * 𝝏C    +  𝝏y_1 * 𝝏C
+                //                                 𝝏x_1   𝝏y_1     𝝏x_2   𝝏y_2     𝝏x_3   𝝏y_3     𝝏x_4   𝝏y_4
                 //
                 // Since we only work on one output node at a time, we just take it row
                 // by row on the matrix and do the dot product with the cost derivatives
@@ -415,7 +440,23 @@ pub const Layer = struct {
     }
 
     /// Calculate the "shareable_node_derivatives" for this hidden layer
-    /// TODO: Explain "shareable_node_derivatives"
+    ///
+    /// "shareable_node_derivatives" are essentially the partial derivatives of the cost
+    /// with respect to the input of this layer (𝝏C/𝝏x) that get passed down to the other
+    /// layers as we go backwards via backpropagation.
+    ///
+    /// Since the layers are chained together, the partial derivative of the cost with
+    /// the respect to the input of this layer (𝝏C/𝝏x) is the same as the partial
+    /// derivative of the cost with respect to the output (𝝏C/𝝏y) of the preceding
+    /// layer. We pass the "shareable_node_derivatives" of this layer down to the
+    /// preceding layer and continue the cycle of transforming 𝝏C/𝝏y to the 𝝏C/𝝏x for
+    /// the previous layer. And use `shareable_node_derivatives` as part of the
+    /// calcuations for adjusting the weights/biases as we go.
+    ///
+    /// For the hidden layer, we take in the `next_layer_shareable_node_derivatives`
+    /// which are the partial derivatives of the cost with respect to the activation
+    /// output for this layer. Then we transform those into the partial derivatives of
+    /// the cost with respect to input of each node.
     pub fn calculateHiddenLayerShareableNodeDerivatives(
         self: *Self,
         next_layer: *Self,
