@@ -19,7 +19,7 @@ const NUM_OF_IMAGES_TO_QUICK_TEST_ON = 100; // (max 10k)
 
 // The number of times to run through the whole training data set.
 const TRAINING_EPOCHS = 1000;
-const BATCH_SIZE: u32 = 1;
+const BATCH_SIZE: u32 = 100;
 const LEARN_RATE: f64 = 0.05;
 const MOMENTUM = 0.9;
 
@@ -97,16 +97,16 @@ pub fn main() !void {
         neural_networks.ActivationFunction{
             // .relu = .{},
             // .leaky_relu = .{},
-            // .elu = .{},
-            .sigmoid = .{},
+            .elu = .{},
+            // .sigmoid = .{},
         },
         neural_networks.ActivationFunction{
             .soft_max = .{},
             // .sigmoid = .{},
         },
         neural_networks.CostFunction{
-            .squared_error = .{},
-            // .cross_entropy = .{},
+            // .squared_error = .{},
+            .cross_entropy = .{},
         },
         allocator,
     );
@@ -174,9 +174,6 @@ pub fn main() !void {
                     accuracy,
                 });
             }
-
-            // TODO: remove
-            break;
         }
 
         // Do a full cost break-down with all of the test points after each epoch
@@ -191,8 +188,5 @@ pub fn main() !void {
             cost,
             accuracy,
         });
-
-        // TODO: remove
-        break;
     }
 }

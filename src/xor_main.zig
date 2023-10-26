@@ -20,7 +20,6 @@ const MOMENTUM = 0.3;
 const xor_labels = [_]u8{
     0,
     1,
-    2,
 };
 const XorDataPoint = neural_networks.DataPoint(u8, &xor_labels);
 // Graph of animal data points:
@@ -69,16 +68,6 @@ pub fn main() !void {
         allocator,
     );
     defer neural_network.deinit(allocator);
-
-    for (neural_network.layers, 0..) |*layer, layer_index| {
-        std.log.debug("layer {d}:\n" ++
-            "\tweights {any}\n" ++
-            "\tbiases: {any}", .{
-            layer_index,
-            layer.weights,
-            layer.biases,
-        });
-    }
 
     var current_epoch_index: usize = 0;
     while (true
@@ -146,9 +135,6 @@ pub fn main() !void {
                     accuracy,
                 });
             }
-
-            // TODO: remove
-            break;
         }
 
         // Graph how the neural network is learning over time.
@@ -161,9 +147,6 @@ pub fn main() !void {
         //         allocator,
         //     );
         // }
-
-        // TODO: remove
-        break;
     }
 
     // Graph how the neural network looks at the end of training.

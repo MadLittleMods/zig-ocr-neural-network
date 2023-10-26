@@ -6,7 +6,7 @@ const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig
 const time_utils = @import("utils/time_utils.zig");
 
 const TRAINING_EPOCHS = 2000;
-const BATCH_SIZE: u32 = 1;
+const BATCH_SIZE: u32 = 10;
 const LEARN_RATE: f64 = 0.1;
 // Since this problem space doesn't have much curvature, momentum tends to hurt us more
 // with higher values.
@@ -26,7 +26,6 @@ const MOMENTUM = 0.3;
 const animal_labels = [_][]const u8{
     "fish",
     "goat",
-    // "TODO: Remove",
 };
 const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 // Graph of animal data points:
@@ -178,8 +177,8 @@ pub fn main() !void {
             //.sigmoid = .{},
         },
         neural_networks.ActivationFunction{
-            // .soft_max = .{},
-            .sigmoid = .{},
+            .soft_max = .{},
+            // .sigmoid = .{},
         },
         neural_networks.CostFunction{
             //.squared_error = .{},
@@ -255,9 +254,6 @@ pub fn main() !void {
                     accuracy,
                 });
             }
-
-            // TODO: remove
-            break;
         }
 
         // Graph how the neural network is learning over time.
@@ -270,9 +266,6 @@ pub fn main() !void {
                 allocator,
             );
         }
-
-        // TODO: remove
-        break;
     }
 
     // Graph how the neural network looks at the end of training.
