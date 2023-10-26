@@ -159,9 +159,6 @@ pub const Sigmoid = struct {
 /// SoftMax is basically the multi-dimensional version of Sigmoid. See the [developer
 /// notes on SoftMax](../../dev-notes.md) to see how the equation is derived.
 //
-/// SoftMax is basically the multi-dimensional version of Sigmoid. See the [developer
-/// notes on SoftMax](../../dev-notes.md) to see how the equation is derived.
-//
 // TODO: Visualize this (ASCII art)
 // TODO: Why would someone use this one?
 //

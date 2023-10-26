@@ -322,6 +322,10 @@ pub const Layer = struct {
         for (0..self.num_output_nodes) |node_index| {
             // Check if we can do an efficient shortcut in these calculations (depends
             // on the activation function)
+            //
+            // See the [developer notes on the activation
+            // functions](../../dev-notes.md#activation-functions) to understand why we
+            // do this.
             switch (self.activation_function.hasSingleInputActivationFunction()) {
                 // If the activation function (y) only uses a single input to produce an
                 // output, the "derivative" of the activation function will result in a
