@@ -279,32 +279,51 @@ pub const Layer = struct {
         // weights (see dev-notes.md for more details).
         var shareable_node_derivatives: []f64 = try allocator.alloc(f64, self.num_output_nodes);
 
+        var cost_derivatives: []f64 = try allocator.alloc(f64, self.num_output_nodes);
+        defer allocator.free(cost_derivatives);
         for (0..self.num_output_nodes) |node_index| {
-            // Evaluate the partial derivative of activation for the current node with respect to its weighted input
-            // da_2/dz_2 = activation_function.derivative(z_2)
-            const activation_derivative = self.activation_function.derivative(
-                self.layer_output_data.weighted_input_sums,
-                node_index,
-            );
-            // std.log.debug("calculateOutputLayerShareableNodeDerivatives() for node_index={d} activation_derivative={d}", .{
-            //     node_index,
-            //     activation_derivative,
-            // });
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
                 const cost_derivative = cost_function.individual_derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
-                shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
-                // std.log.debug("calculateOutputLayerShareableNodeDerivatives() for node_index={d} cost_derivative={d}", .{
-                //     node_index,
-                //     cost_derivative,
-                // });
+                cost_derivatives[node_index] = cost_derivative;
+                std.log.debug("calculateOutputLayerShareableNodeDerivatives() for node_index={d} cost_derivative={d}", .{
+                    node_index,
+                    cost_derivative,
+                });
             } else {
                 @panic(
                     \\Cannot call `calculateOutputLayerShareableNodeDerivatives(...)`
                     \\without a `cost_function` set. Make sure to set a `cost_function`
                     \\for the output layer.
                 );
+            }
+        }
+
+        for (0..self.num_output_nodes) |node_index| {
+            switch (self.activation_function.hasSparseGradient()) {
+                true => {
+                    // Evaluate the partial derivative of activation for the current node with respect to its weighted input
+                    // da_2/dz_2 = activation_function.derivative(z_2)
+                    const activation_derivative = self.activation_function.derivative(
+                        self.layer_output_data.weighted_input_sums,
+                        node_index,
+                    );
+                    shareable_node_derivatives[node_index] = activation_derivative * cost_derivatives[node_index];
+                },
+                false => {
+                    // TODO: Evaluate the partial derivative of activation for the current node with respect to its weighted input
+                    // da_2/dz_2 = activation_function.derivative(z_2)
+                    const activation_ki_derivatives = try self.activation_function.gradient(
+                        self.layer_output_data.weighted_input_sums,
+                        node_index,
+                        allocator,
+                    );
+                    defer allocator.free(activation_ki_derivatives);
+                    for (activation_ki_derivatives, 0..) |_, gradient_index| {
+                        shareable_node_derivatives[node_index] += activation_ki_derivatives[gradient_index] * cost_derivatives[gradient_index];
+                    }
+                },
             }
         }
         // std.log.debug("calculateOutputLayerShareableNodeDerivatives() end ===================", .{});

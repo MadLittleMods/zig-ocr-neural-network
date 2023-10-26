@@ -20,6 +20,7 @@ const MOMENTUM = 0.3;
 const xor_labels = [_]u8{
     0,
     1,
+    2,
 };
 const XorDataPoint = neural_networks.DataPoint(u8, &xor_labels);
 // Graph of animal data points:

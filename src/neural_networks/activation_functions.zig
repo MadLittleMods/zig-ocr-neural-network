@@ -38,6 +38,8 @@ const std = @import("std");
 //
 // https://machinelearningmastery.com/rectified-linear-activation-function-for-deep-learning-neural-networks/
 pub const Relu = struct {
+    pub const has_sparse_gradient = true;
+
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         const input = inputs[input_index];
         return @max(0.0, input);
@@ -73,6 +75,7 @@ pub const Relu = struct {
 // >
 // > -- https://himanshuxd.medium.com/activation-functions-sigmoid-relu-leaky-relu-and-softmax-basics-for-neural-networks-and-deep-8d9c70eed91e
 pub const LeakyRelu = struct {
+    pub const has_sparse_gradient = true;
     const alpha = 0.1;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -107,6 +110,7 @@ pub const LeakyRelu = struct {
 // initial epochs. You now have a network that uses LeakyReLU for cheaper inference but
 // which didn't suffer instability during training.
 pub const ELU = struct {
+    pub const has_sparse_gradient = true;
     const alpha = 1.0;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -134,7 +138,7 @@ pub const ELU = struct {
 //
 // Sigmoid will constrain things between 0 and 1 and not have many values in between.
 pub const Sigmoid = struct {
-    const Self = @This();
+    pub const has_sparse_gradient = true;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         const input = inputs[input_index];
@@ -168,6 +172,8 @@ pub const Sigmoid = struct {
 //    https://www.youtube.com/watch?v=AbLvJVwySEo
 //  - https://themaverickmeerkat.com/2019-10-23-Softmax/
 pub const SoftMax = struct {
+    pub const has_sparse_gradient = false;
+
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
         // TODO: Since it's really easy for the exponents to exceed the max value of a
         // float, we could subtract the max value from each input to make sure we don't
@@ -201,6 +207,33 @@ pub const SoftMax = struct {
         // TODO: Why can we get away with only using the k = i version of the
         // equation? Is this flawed?
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
+    }
+
+    // A gradient is just a vector of derivatives.
+    pub fn gradient(_: @This(), inputs: []const f64, input_index: usize, allocator: std.mem.Allocator) ![]f64 {
+        var results = try allocator.alloc(f64, inputs.len);
+
+        var exp_sum: f64 = 0.0;
+        for (inputs) |input| {
+            exp_sum += @exp(input);
+        }
+
+        const k = input_index;
+        const exp_k = @exp(inputs[k]);
+        for (inputs, 0..) |_, i| {
+            const delta: f64 = if (i == k) 1 else 0;
+
+            const exp_i = @exp(inputs[i]);
+
+            const numerator = (delta * exp_i * exp_sum) - (exp_i * exp_k);
+            const denominator = exp_sum * exp_sum;
+
+            const result_ki = numerator / denominator;
+            // std.log.debug("softmax_sum(k={d}, i={d}): {d}", .{ k, i, result_ki });
+            results[i] = result_ki;
+        }
+
+        return results;
     }
 };
 
@@ -359,7 +392,6 @@ test "Slope check activation functions" {
         const threshold = 1e-4;
         try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
     }
-    std.debug.print("\nsqrt(floatEps(T)) = {d}\n", .{std.math.sqrt(std.math.floatEps(f64))});
 }
 
 pub const ActivationFunction = union(enum) {
@@ -368,6 +400,12 @@ pub const ActivationFunction = union(enum) {
     elu: ELU,
     sigmoid: Sigmoid,
     soft_max: SoftMax,
+
+    pub fn hasSparseGradient(self: @This()) bool {
+        return switch (self) {
+            inline else => |case| @TypeOf(case).has_sparse_gradient,
+        };
+    }
 
     pub fn activate(self: @This(), inputs: []const f64, input_index: usize) f64 {
         return switch (self) {
@@ -379,6 +417,23 @@ pub const ActivationFunction = union(enum) {
     pub fn derivative(self: @This(), inputs: []const f64, input_index: usize) f64 {
         return switch (self) {
             inline else => |case| case.derivative(inputs, input_index),
+        };
+    }
+
+    /// TODO
+    pub fn gradient(self: @This(), inputs: []const f64, input_index: usize, allocator: std.mem.Allocator) ![]f64 {
+        return switch (self) {
+            inline else => |case| {
+                if (comptime std.meta.trait.hasFn("gradient")(@TypeOf(case))) {
+                    return case.gradient(inputs, input_index, allocator);
+                } else {
+                    var results = try allocator.alloc(f64, inputs.len);
+                    @memset(results, 0);
+                    results[input_index] = self.derivative(inputs, input_index);
+
+                    return results;
+                }
+            },
         };
     }
 
