@@ -303,10 +303,6 @@ pub const Layer = struct {
             if (self.cost_function) |cost_function| {
                 const cost_derivative = cost_function.individual_derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
                 cost_derivatives[node_index] = cost_derivative;
-                std.log.debug("calculateOutputLayerShareableNodeDerivatives() for node_index={d} cost_derivative={d}", .{
-                    node_index,
-                    cost_derivative,
-                });
             } else {
                 @panic(
                     \\Cannot call `calculateOutputLayerShareableNodeDerivatives(...)`

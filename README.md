@@ -50,6 +50,14 @@ $ zig build run-simple_xy_animal_sample
 ![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/128ca52f-0f6f-42ae-8d7e-c557ad943706)
 
 
+There is also the most barebones XOR example which just trains a neural network to act
+like a XOR gate.
+
+```sh
+$ zig build run-xor
+```
+
+
 ## Testing
 
 ```sh
