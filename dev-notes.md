@@ -162,6 +162,85 @@ When expanding the network with more nodes per layer, TODO
 
 ### Activation functions
 
+#### Single-input activation functions like (`Relu`, `LeakyRelu`, `ELU`, `Sigmoid`, `Tanh`)
+
+Single-input activation only use one input to produce an output.
+
+When we take a derivative of a single-input activation function, we can simply just take
+the derivative of the activation function with respect to the input and multiply the
+scalar value with whatever we need to afterwards without thinking about it.
+
+---
+
+Note: You might only care about this section if you're trying to figure out why we need
+a `gradient` function for `SoftMax` or are trying to understand the code in
+`calculateOutputLayerShareableNodeDerivatives(...)`. It's mainly just to illustrate a
+point for comparison with the derivative of multi-input activation functions like
+`SoftMax` explained in the section below.
+
+We don't need to specify a `gradient` function for single-input activation functions. We
+can simply use the `derivative` with a single-input activation functions.
+
+This characteristic can be conveyed by using a Jacobian matrix to get the derivative of
+the activation function with respect to the `inputs` given to the function for each node
+in the layer. The matrix ends up being sparse with only the diagonal values being
+non-zero. (each row in the matrix represents the partial derivative of the activation
+function with respect to the `inputs` of each node in the layer)
+
+
+$`
+\verb|inputs| =
+\begin{bmatrix}
+x_1\\
+x_2\\
+x_3\\
+x_4\\
+\end{bmatrix}
+`$
+
+Let's use the `Sigmoid` activation function as an example:
+
+$`y_i = \verb|Sigmoid|(x_i) = \frac{}{1 + exp(-x_i)}`$
+
+And then if we want to find the partial derivative of the activation function ($`y_i`$)
+with respect to all of the `inputs` of each node in the layer ($`\frac{\partial
+y_i}{\partial x_k}`$), we can use a Jacobian matrix.
+
+$`\frac{\partial y_1}{\partial x_1} 1 / (1 + exp(-x_1)) = y_1(1 - y_1)`$
+
+The partial derivitive of the activation function with respect to $`x_2`$. Because we
+don't see any $`x_2`$ in the equation, changing $`x_2`$ has no effect on the output of
+the function. So the partial derivative is 0. Same thing happens when we look for
+$`x_3`$, and $`x_4`$.
+
+$`\frac{\partial y_1}{\partial x_2} 1 / (1 + exp(-x_1)) = 0`$
+
+$`\frac{\partial y_1}{\partial x_3} 1 / (1 + exp(-x_1)) = 0`$
+
+$`\frac{\partial y_1}{\partial x_4} 1 / (1 + exp(-x_1)) = 0`$
+
+If we repeat that for each row, the Jacobian matrix ends up looking like:
+
+$`
+\begin{bmatrix}
+\frac{\partial y_1}{\partial x_1} & 0 & 0 & 0\\
+0 & \frac{\partial y_2}{\partial x_2} & 0 & 0\\
+0 & 0 & \frac{\partial y_3}{\partial x_3} & 0\\
+0 & 0 & 0 & \frac{\partial y_4}{\partial x_4}\\
+\end{bmatrix}
+`$
+
+
+TODO
+
+So for example during backpropagation, when we multiply the cost vector by this Jacobian,
+most of the terms just drop away because they're multiplied by 0 and we're just left
+with the diagonal terms anyway.
+
+
+
+
+
 #### Softmax
 
 Sources:
@@ -236,6 +315,74 @@ e^{x_i}\frac{-e^{x_k}}{(\sum\limits_{j=1}^{n} e^{x_j})^2}
 -y_iy_k
 \end{aligned}`$
 
+Now we know how to calculate a single element of the derivative of the SoftMax function.
+To calculate the full derivative of the SoftMax activation function, we can use a
+Jacobian matrix. In the example, the `SoftMax` function uses 4 `inputs` which produces a
+matrix that is 4 x 4.
+
+$`\begin{bmatrix}
+\frac{\partial y_1}{\partial x_1} & \frac{\partial y_1}{\partial x_2} & \frac{\partial y_1}{\partial x_3} & \frac{\partial y_1}{\partial x_4}\\
+\frac{\partial y_2}{\partial x_1} & \frac{\partial y_2}{\partial x_2} & \frac{\partial y_2}{\partial x_3} & \frac{\partial y_2}{\partial x_4}\\
+\frac{\partial y_3}{\partial x_1} & \frac{\partial y_3}{\partial x_2} & \frac{\partial y_3}{\partial x_3} & \frac{\partial y_3}{\partial x_4}\\
+\frac{\partial y_4}{\partial x_1} & \frac{\partial y_4}{\partial x_4} & \frac{\partial y_4}{\partial x_3} & \frac{\partial y_4}{\partial x_4}\\
+\end{bmatrix}`$
+
+In the context of the code, the `derivative`/`gradient` functions assemble a single row
+of this matrix at a time. The row is specified by the `node_index` which ends up getting
+passed in as the `input_index` with the activation functions.
+
+If we just used the `derivative` function with `SoftMax`, we end up only calculating the
+diagonals of the Jacobian matrix (we just return the single derivative where $`k = i`$
+on that diagonal) and competely miss the off-diagonal terms (where $`k \ne i`$) which
+will throw off how well our network learns (more inaccurate wandering during back
+propagation) if we try to mix this in during backpropagation.
+
+$`
+\begin{bmatrix}
+\frac{\partial y_1}{\partial x_1} & 0 & 0 & 0\\
+0 & \frac{\partial y_2}{\partial x_2} & 0 & 0\\
+0 & 0 & \frac{\partial y_3}{\partial x_3} & 0\\
+0 & 0 & 0 & \frac{\partial y_4}{\partial x_4}\\
+\end{bmatrix}
+`$
+
+In the context of backpropagation, we need to end up with a single value for each node
+$`i`$. With a single-input activation function we just multiply the scalar activation
+function `derivative` by the partial derivative of the cost with respect to the input of
+that node (($`\frac{\partial C}{\partial y_i}`$)).
+
+But when using a multi-input activation function like `SoftMax`, we need to take dot
+product the activation `gradient` with the whole cost vector ($`\frac{\partial
+C}{\partial y}`$). Remember, we're showing a whole matrix here, but the code just takes
+it row by row (specified by the `node_index` which ends up getting passed in as the
+`input_index` with the activation functions).
+
+$`\begin{aligned}
+\frac{\partial C}{\partial x} &=
+\begin{bmatrix}
+\frac{\partial y_1}{\partial x_1} & \frac{\partial y_1}{\partial x_2} & \frac{\partial y_1}{\partial x_3} & \frac{\partial y_1}{\partial x_4}\\
+\frac{\partial y_2}{\partial x_1} & \frac{\partial y_2}{\partial x_2} & \frac{\partial y_2}{\partial x_3} & \frac{\partial y_2}{\partial x_4}\\
+\frac{\partial y_3}{\partial x_1} & \frac{\partial y_3}{\partial x_2} & \frac{\partial y_3}{\partial x_3} & \frac{\partial y_3}{\partial x_4}\\
+\frac{\partial y_4}{\partial x_1} & \frac{\partial y_4}{\partial x_4} & \frac{\partial y_4}{\partial x_3} & \frac{\partial y_4}{\partial x_4}\\
+\end{bmatrix}
+\cdot
+\begin{bmatrix}
+\frac{\partial C}{\partial y_1}\\
+\frac{\partial C}{\partial y_2}\\
+\frac{\partial C}{\partial y_3}\\
+\frac{\partial C}{\partial y_4}\\
+\end{bmatrix}
+\end{aligned}`$
+
+$`\begin{aligned}
+\\&=
+\begin{bmatrix}
+\frac{\partial y_1}{\partial x_1} * \frac{\partial C}{\partial y_1} + \frac{\partial y_1}{\partial x_2} * \frac{\partial C}{\partial y_2} + \frac{\partial y_1}{\partial x_3} * \frac{\partial C}{\partial y_3} + \frac{\partial y_1}{\partial x_4} * \frac{\partial C}{\partial y_4}\\
+\frac{\partial y_2}{\partial x_1} * \frac{\partial C}{\partial y_1} + \frac{\partial y_2}{\partial x_2} * \frac{\partial C}{\partial y_2} + \frac{\partial y_2}{\partial x_3} * \frac{\partial C}{\partial y_3} + \frac{\partial y_2}{\partial x_4} * \frac{\partial C}{\partial y_4}\\
+\frac{\partial y_3}{\partial x_1} * \frac{\partial C}{\partial y_1} + \frac{\partial y_3}{\partial x_2} * \frac{\partial C}{\partial y_2} + \frac{\partial y_3}{\partial x_3} * \frac{\partial C}{\partial y_3} + \frac{\partial y_3}{\partial x_4} * \frac{\partial C}{\partial y_4}\\
+\frac{\partial y_4}{\partial x_1} * \frac{\partial C}{\partial y_1} + \frac{\partial y_4}{\partial x_4} * \frac{\partial C}{\partial y_2} + \frac{\partial y_4}{\partial x_3} * \frac{\partial C}{\partial y_3} + \frac{\partial y_4}{\partial x_4} * \frac{\partial C}{\partial y_4}\\
+\end{bmatrix}
+\end{aligned}`$
 
 
 ## Other nerual network implementations
