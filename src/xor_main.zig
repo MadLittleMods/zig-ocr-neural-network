@@ -137,6 +137,7 @@ pub fn main() !void {
             }
         }
 
+        // TODO: Update graphNeuralNetwork to allow for different file names
         // Graph how the neural network is learning over time.
         // if (current_epoch_index % 1000 == 0 and current_epoch_index != 0) {
         //     try graphNeuralNetwork(
@@ -149,6 +150,7 @@ pub fn main() !void {
         // }
     }
 
+    // TODO: Update graphNeuralNetwork to allow for different file names
     // Graph how the neural network looks at the end of training.
     // try graphNeuralNetwork(
     //     XorDataPoint,
