@@ -367,18 +367,23 @@ pub const Layer = struct {
                 //
                 // For example to calculate `shareable_node_derivatives[0]`,
                 // it would look like:
-                // shareable_node_derivatives[0] = 𝝏y_1 * 𝝏C
+                // shareable_node_derivatives[0] = 𝝏y_1 * 𝝏C    +  0 * 𝝏C    +  0 * 𝝏C    +  0 * 𝝏C
+                //                                 𝝏x_1   𝝏y_1         𝝏y_2         𝝏y_3         𝝏y_4
+                //
+                //                               = 𝝏y_1 * 𝝏C
                 //                                 𝝏x_1   𝝏y_1
                 //
-                // Since all of those extra multiplictions fall away anyway against the
-                // sparse matrix, to avoid the vector/matrix multiplication
+                // Since all of those extra multiplictions fall away against the sparse
+                // matrix anyway, to avoid the vector/matrix multiplication
                 // computational complexity, we can see that we only need find the
                 // partial derivative of the activation function with respect to the
                 // weighted input of the current node and multiply it with the partial
                 // derivative of the cost with respect to the activation output of the
                 // same node (where `k = i`).
                 true => {
-                    // Evaluate the partial derivative of activation with respect to the weighted input of the current node
+                    // Evaluate the partial derivative of activation with respect to the
+                    // weighted input of the current node
+                    //
                     // da_2/dz_2 = activation_function.derivative(z_2)
                     const activation_derivative = self.activation_function.derivative(
                         self.layer_output_data.weighted_input_sums,
@@ -386,7 +391,7 @@ pub const Layer = struct {
                     );
                     shareable_node_derivatives[node_index] = activation_derivative * cost_derivatives[node_index];
                 },
-                // If the activation function (y) uses multiple inputs to produce an
+                // If the activation function (y_i) uses multiple inputs to produce an
                 // output, the "derivative" of the activation function will result in a
                 // full Jacobian matrix that we carefully have to matrix multiply with
                 // the cost derivatives vector.

@@ -206,11 +206,12 @@ pub const SoftMax = struct {
     // ┃   0     0     0    𝝏y_4  ┃
     // ┗                    𝝏x_4  ┛
     //
-    // This is only defined for completeness sake but backprpagation should use the
-    // `gradient` function instead. Empirically (in practice), using the `derivative`
-    // function will allow the neural network to converge successfully but it's
-    // unclear/not measured on how much this causes us to wander around the loss
-    // surface.
+    // This is only defined for completeness sake but backpropagation should use the
+    // `gradient` function instead which calculates the actual derivative of the
+    // activation function. Empirically (in practice), using the `derivative` function
+    // will allow the neural network to converge successfully but it's unclear/not
+    // measured on how much this causes us to wander around the cost/loss surface or
+    // learn slower because it's flawed.
     pub fn derivative(_: @This(), inputs: []const f64, input_index: usize) f64 {
         var exp_sum: f64 = 0.0;
         for (inputs) |input| {
@@ -225,8 +226,8 @@ pub const SoftMax = struct {
     }
 
     // Returns all of the partial derivatives of the activation function with respect to
-    // the input at the given index (x_k). This function returns a single row specified
-    // by `input_index` of the Jacobian matrix.
+    // the input at the given index (x_k). This function returns a single row (specified
+    // by `input_index`) of the Jacobian matrix.
     //
     // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
     // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
@@ -487,10 +488,10 @@ pub const ActivationFunction = union(enum) {
         };
     }
 
-    // The gradient function produces a row vector of derivatives that we can think of
-    // as a row in Jacobian matrix (m columns, n rows) where m and n is the number of
-    // inputs. Each item in the row is the partial derivative of the activation function
-    // with respect to the input at the given index (x_k).
+    // The `gradient` function produces a row vector of derivatives that we can think of
+    // as a row in Jacobian matrix with the same square size as the number of `inputs`.
+    // Each item in the row is the partial derivative of the activation function with
+    // respect to the input at the given index (x_k).
     //
     // Jacobian matrix example:
     // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
@@ -537,10 +538,9 @@ pub const ActivationFunction = union(enum) {
                 if (comptime std.meta.trait.hasFn("gradient")(@TypeOf(case))) {
                     return case.gradient(inputs, input_index, allocator);
                 }
-                // Otherwise, we can provide a default implementation that just puts the
-                // derivatives along the diagonal of the Jacobian matrix. This will have
-                // the same effect as using the shortcut when just using the derivative
-                // function for single-input activation functions.
+                // Otherwise, if it is a single-input activation function, we can
+                // provide a default implementation that just puts the derivatives along
+                // the diagonal of the Jacobian matrix.
                 else if (comptime @TypeOf(case).has_single_input_activation_function) {
                     var results = try allocator.alloc(f64, inputs.len);
                     @memset(results, 0);
