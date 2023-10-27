@@ -98,11 +98,14 @@ pub fn main() !void {
             // .relu = .{},
             // .leaky_relu = .{},
             .elu = .{},
-            //.sigmoid = .{},
+            // .sigmoid = .{},
         },
-        neural_networks.ActivationFunction{ .soft_max = .{} },
+        neural_networks.ActivationFunction{
+            .soft_max = .{},
+            // .sigmoid = .{},
+        },
         neural_networks.CostFunction{
-            //.squared_error = .{},
+            // .squared_error = .{},
             .cross_entropy = .{},
         },
         allocator,

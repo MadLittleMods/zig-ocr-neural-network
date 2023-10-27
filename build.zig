@@ -56,6 +56,7 @@ pub fn build(b: *std.Build) !void {
         name: []const u8,
         src: []const u8,
     }{
+        .{ .name = "xor", .src = "src/xor_main.zig" },
         .{ .name = "simple_xy_animal_sample", .src = "src/simple_xy_animal_sample_main.zig" },
         .{ .name = "mnist_ocr", .src = "src/main.zig" },
     }) |exe_cfg| {

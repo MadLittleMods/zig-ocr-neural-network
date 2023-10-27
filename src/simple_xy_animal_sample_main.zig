@@ -23,7 +23,10 @@ const MOMENTUM = 0.3;
 // neural network over every pixel in the graph to visualize the boundary that the
 // networks weights and biases is making. See https://youtu.be/hfMk-kjRv4c?t=311 for
 // reference.
-const animal_labels = [_][]const u8{ "fish", "goat" };
+const animal_labels = [_][]const u8{
+    "fish",
+    "goat",
+};
 const AnimalDataPoint = neural_networks.DataPoint([]const u8, &animal_labels);
 // Graph of animal data points:
 // https://www.desmos.com/calculator/tkfacez5wt
@@ -173,7 +176,10 @@ pub fn main() !void {
             .elu = .{},
             //.sigmoid = .{},
         },
-        neural_networks.ActivationFunction{ .soft_max = .{} },
+        neural_networks.ActivationFunction{
+            .soft_max = .{},
+            // .sigmoid = .{},
+        },
         neural_networks.CostFunction{
             //.squared_error = .{},
             .cross_entropy = .{},

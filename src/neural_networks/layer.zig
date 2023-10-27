@@ -258,18 +258,33 @@ pub const Layer = struct {
     }
 
     /// Calculate the "shareable_node_derivatives" for this output layer
-    /// TODO: Explain "shareable_node_derivatives"
+    ///
+    /// "shareable_node_derivatives" are essentially the partial derivatives of the cost
+    /// with respect to the input of this layer (𝝏C/𝝏x) that get passed down to the other
+    /// layers as we go backwards via backpropagation.
+    ///
+    /// Since the layers are chained together, the partial derivative of the cost with
+    /// the respect to the input of this layer (𝝏C/𝝏x) is the same as the partial
+    /// derivative of the cost with respect to the output (𝝏C/𝝏y) of the preceding
+    /// layer. We pass the "shareable_node_derivatives" of this layer down to the
+    /// preceding layer and continue the cycle of transforming 𝝏C/𝝏y to the 𝝏C/𝝏x for
+    /// the previous layer. And use `shareable_node_derivatives` as part of the
+    /// calcuations for adjusting the weights/biases as we go.
+    ///
+    /// For the output layer, we first start with the partial derivatives of the cost
+    /// with respect to the activation output. Then we transform those into the partial
+    /// derivatives of the cost with respect to input of each node.
     pub fn calculateOutputLayerShareableNodeDerivatives(
         self: *Self,
         expected_outputs: []const f64,
         allocator: std.mem.Allocator,
     ) ![]f64 {
+        // Sanity check that the arguments are as expected
         if (expected_outputs.len != self.num_output_nodes) {
             std.log.err("calculateOutputLayerShareableNodeDerivatives() was called with {d} expected_outputs but we expect it to match the same num_output_nodes={d}", .{
                 expected_outputs,
                 self.num_output_nodes,
             });
-
             return error.ExpectedOutputCountMismatch;
         }
 
@@ -278,18 +293,19 @@ pub const Layer = struct {
         // weights (see dev-notes.md for more details).
         var shareable_node_derivatives: []f64 = try allocator.alloc(f64, self.num_output_nodes);
 
+        // Calculate the change of cost/loss/error with respect to the activation output of each node
+        // ("change of" is just another way to say "derivative of")
+        var cost_derivatives: []f64 = try allocator.alloc(f64, self.num_output_nodes);
+        defer allocator.free(cost_derivatives);
         for (0..self.num_output_nodes) |node_index| {
-            // Evaluate the partial derivative of activation for the current node with respect to its weighted input
-            // da_2/dz_2 = activation_function.derivative(z_2)
-            const activation_derivative = self.activation_function.derivative(
-                self.layer_output_data.weighted_input_sums,
-                node_index,
-            );
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
-                const cost_derivative = cost_function.individual_derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
-                shareable_node_derivatives[node_index] = activation_derivative * cost_derivative;
+                const cost_derivative = cost_function.individual_derivative(
+                    self.layer_output_data.outputs[node_index],
+                    expected_outputs[node_index],
+                );
+                cost_derivatives[node_index] = cost_derivative;
             } else {
                 @panic(
                     \\Cannot call `calculateOutputLayerShareableNodeDerivatives(...)`
@@ -299,11 +315,156 @@ pub const Layer = struct {
             }
         }
 
+        // Calculate the change of the activation with respect to the weighted input of each node
+        // ("change of" is just another way to say "derivative of")
+        //
+        // After we find the derivative of the activation function with respect to the
+        // weighted input of each node, we can multiply/dot it with the derivative of the
+        // cost function with respect to the activation output of the same node to
+        // produce the "shareable_node_derivatives" for each node.
+        for (0..self.num_output_nodes) |node_index| {
+            // Check if we can do an efficient shortcut in these calculations (depends
+            // on the activation function)
+            //
+            // See the [developer notes on the activation
+            // functions](../../dev-notes.md#activation-functions) to understand why we
+            // do this.
+            switch (self.activation_function.hasSingleInputActivationFunction()) {
+                // If the activation function (y) only uses a single input to produce an
+                // output, the "derivative" of the activation function will result in a
+                // sparse Jacobian matrix with only the diagonal elements populated (and
+                // the rest 0). And we can do an efficient shortcut in the calculations.
+                //
+                // Sparse Jacobian matrix where only the diagonal elements are defined:
+                // ┏  𝝏y_1   0     0     0    ┓
+                // ┃  𝝏x_1                    ┃
+                // ┃                          ┃
+                // ┃   0    𝝏y_2   0     0    ┃
+                // ┃        𝝏x_2              ┃
+                // ┃                          ┃
+                // ┃   0     0    𝝏y_3   0    ┃
+                // ┃              𝝏x_3        ┃
+                // ┃                          ┃
+                // ┃   0     0     0    𝝏y_4  ┃
+                // ┗                    𝝏x_4  ┛
+                //
+                // If we think about doing the dot product between cost derivatives
+                // vector and each row of this sparse Jacobian matrix, we can see that
+                // we only end up with the diagonal elements multiplied by the other
+                // vector and the rest fall away because they are multiplied by 0.
+                //
+                // ┏  𝝏y_1   0     0     0    ┓     ┏  𝝏C    ┓
+                // ┃  𝝏x_1                    ┃     ┃  𝝏y_1  ┃
+                // ┃                          ┃     ┃        ┃
+                // ┃   0    𝝏y_2   0     0    ┃     ┃  𝝏C    ┃
+                // ┃        𝝏x_2              ┃     ┃  𝝏y_2  ┃
+                // ┃                          ┃  .  ┃        ┃  = shareable_node_derivatives
+                // ┃   0     0    𝝏y_3   0    ┃     ┃  𝝏C    ┃
+                // ┃              𝝏x_3        ┃     ┃  𝝏y_3  ┃
+                // ┃                          ┃     ┃        ┃
+                // ┃   0     0     0    𝝏y_4  ┃     ┃  𝝏C    ┃
+                // ┗                    𝝏x_4  ┛     ┗  𝝏y_4  ┛
+                //
+                // For example to calculate `shareable_node_derivatives[0]`,
+                // it would look like:
+                // shareable_node_derivatives[0] = 𝝏y_1 * 𝝏C    +  0 * 𝝏C    +  0 * 𝝏C    +  0 * 𝝏C
+                //                                 𝝏x_1   𝝏y_1         𝝏y_2         𝝏y_3         𝝏y_4
+                //
+                //                               = 𝝏y_1 * 𝝏C
+                //                                 𝝏x_1   𝝏y_1
+                //
+                // Since all of those extra multiplictions fall away against the sparse
+                // matrix anyway, to avoid the vector/matrix multiplication
+                // computational complexity, we can see that we only need find the
+                // partial derivative of the activation function with respect to the
+                // weighted input of the current node and multiply it with the partial
+                // derivative of the cost with respect to the activation output of the
+                // same node (where `k = i`).
+                true => {
+                    // Evaluate the partial derivative of activation with respect to the
+                    // weighted input of the current node
+                    //
+                    // da_2/dz_2 = activation_function.derivative(z_2)
+                    const activation_derivative = self.activation_function.derivative(
+                        self.layer_output_data.weighted_input_sums,
+                        node_index,
+                    );
+                    shareable_node_derivatives[node_index] = activation_derivative * cost_derivatives[node_index];
+                },
+                // If the activation function (y_i) uses multiple inputs to produce an
+                // output, the "derivative" of the activation function will result in a
+                // full Jacobian matrix that we carefully have to matrix multiply with
+                // the cost derivatives vector.
+                //
+                // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓     ┏  𝝏C    ┓
+                // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃     ┃  𝝏y_1  ┃
+                // ┃                          ┃     ┃        ┃
+                // ┃  𝝏y_2  𝝏y_2  𝝏y_2  𝝏y_2  ┃     ┃  𝝏C    ┃
+                // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃     ┃  𝝏y_2  ┃
+                // ┃                          ┃  .  ┃        ┃  = shareable_node_derivatives
+                // ┃  𝝏y_3  𝝏y_3  𝝏y_3  𝝏y_3  ┃     ┃  𝝏C    ┃
+                // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃     ┃  𝝏y_3  ┃
+                // ┃                          ┃     ┃        ┃
+                // ┃  𝝏y_4  𝝏y_4  𝝏y_4  𝝏y_4  ┃     ┃  𝝏C    ┃
+                // ┗  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┛     ┗  𝝏y_4  ┛
+                //
+                // For example to calculate `shareable_node_derivatives[0]`,
+                // it would look like:
+                // shareable_node_derivatives[0] = 𝝏y_1 * 𝝏C    +  𝝏y_1 * 𝝏C    +  𝝏y_1 * 𝝏C    +  𝝏y_1 * 𝝏C
+                //                                 𝝏x_1   𝝏y_1     𝝏x_2   𝝏y_2     𝝏x_3   𝝏y_3     𝝏x_4   𝝏y_4
+                //
+                // Since we only work on one output node at a time, we just take it row
+                // by row on the matrix and do the dot product with the cost derivatives
+                // vector.
+                //
+                // Note: There are more efficient ways to do this type of calculation
+                // when working directly with the matrices but this seems like the most
+                // beginner friendly way to do it and in the spirit of the other code.
+                false => {
+                    // For each node, find the partial derivative of activation with
+                    // respect to the weighted input of that node. We're basically just
+                    // producing row j (where j = `node_index`) of the Jacobian matrix
+                    // for the activation function.
+                    //
+                    // da_2/dz_2 = activation_function.derivative(z_2)
+                    const activation_ki_derivatives = try self.activation_function.gradient(
+                        self.layer_output_data.weighted_input_sums,
+                        node_index,
+                        allocator,
+                    );
+                    defer allocator.free(activation_ki_derivatives);
+
+                    // This is just a dot product of the `activation_ki_derivatives` and
+                    // `cost_derivatives` (both vectors).
+                    for (activation_ki_derivatives, 0..) |_, gradient_index| {
+                        shareable_node_derivatives[node_index] += activation_ki_derivatives[gradient_index] *
+                            cost_derivatives[gradient_index];
+                    }
+                },
+            }
+        }
+
         return shareable_node_derivatives;
     }
 
     /// Calculate the "shareable_node_derivatives" for this hidden layer
-    /// TODO: Explain "shareable_node_derivatives"
+    ///
+    /// "shareable_node_derivatives" are essentially the partial derivatives of the cost
+    /// with respect to the input of this layer (𝝏C/𝝏x) that get passed down to the other
+    /// layers as we go backwards via backpropagation.
+    ///
+    /// Since the layers are chained together, the partial derivative of the cost with
+    /// the respect to the input of this layer (𝝏C/𝝏x) is the same as the partial
+    /// derivative of the cost with respect to the output (𝝏C/𝝏y) of the preceding
+    /// layer. We pass the "shareable_node_derivatives" of this layer down to the
+    /// preceding layer and continue the cycle of transforming 𝝏C/𝝏y to the 𝝏C/𝝏x for
+    /// the previous layer. And use `shareable_node_derivatives` as part of the
+    /// calcuations for adjusting the weights/biases as we go.
+    ///
+    /// For the hidden layer, we take in the `next_layer_shareable_node_derivatives`
+    /// which are the partial derivatives of the cost with respect to the activation
+    /// output for this layer. Then we transform those into the partial derivatives of
+    /// the cost with respect to input of each node.
     pub fn calculateHiddenLayerShareableNodeDerivatives(
         self: *Self,
         next_layer: *Self,
@@ -327,10 +488,20 @@ pub const Layer = struct {
             }
             // Evaluate the partial derivative of activation for the current node with respect to its weighted input
             // da_1/dz_1 = activation_function.derivative(z_1)
-            shareable_node_derivative *= self.activation_function.derivative(
-                self.layer_output_data.weighted_input_sums,
-                node_index,
-            );
+            if (self.activation_function.hasSingleInputActivationFunction()) {
+                shareable_node_derivative *= self.activation_function.derivative(
+                    self.layer_output_data.weighted_input_sums,
+                    node_index,
+                );
+            } else {
+                // We don't expect people to use something like SoftMax on a hidden
+                // layer but if someone misconfigures their network (or just wants to
+                // try it out) we should at least give them a helpful error message.
+                @panic(
+                    "TODO: We currently do not handle activation functions on hidden layers " ++
+                        "which use multiple inputs and produce full Jacobian matrices when taking the derivative!",
+                );
+            }
             shareable_node_derivatives[node_index] = shareable_node_derivative;
         }
         return shareable_node_derivatives;

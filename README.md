@@ -6,7 +6,10 @@ to recognize handwritten digits.
 A lot of the phrasing and concepts are taken from the resources linked in the
 [*developer notes*](./dev-notes.md). I'm just trying to piece together all of those
 resources into something that works and is understandable to me as I learn. Major kudos
-to Sebastian Lague, 3Blue1Brown, and Samson Zhang for their excellent resources.
+to Sebastian Lague, 3Blue1Brown, and Samson Zhang for their excellent resources. And a
+special shoutout to Hans Musgrave ([@hmusgrave](https://github.com/hmusgrave)) for the
+immense amount of help to get my head around these concepts as I got stuck through this
+process.
 
 ## Setup
 
@@ -48,6 +51,14 @@ $ zig build run-simple_xy_animal_sample
 ```
 
 ![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/128ca52f-0f6f-42ae-8d7e-c557ad943706)
+
+
+There is also the most barebones XOR example which just trains a neural network to act
+like a XOR gate.
+
+```sh
+$ zig build run-xor
+```
 
 
 ## Testing
