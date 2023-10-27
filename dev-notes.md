@@ -253,7 +253,7 @@ Sources:
 
 Given the SoftMax equation:
 $`
-y_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
+y_i = S(x)_i = \frac{e^{x_i}}{\sum\limits_{j=1}^{n} e^{x_j}}
 = \frac{\verb|exp_input|}{\verb|exp_sum|}
 `$
 
@@ -271,7 +271,7 @@ $`
 \end{cases}}
 \\
 \\
-\frac{\partial y_i}{\partial x_k} &=
+\frac{\partial y_i}{\partial x_k} = \frac{\partial S(x)_i}{\partial x_k} &=
 \frac{
     \delta_{ik}e^{x_i}(\sum\limits_{j=1}^{n} e^{x_j}) - e^{x_i}e^{x_k}
 }
@@ -280,7 +280,8 @@ $`
 }
 \\&=
 y_i\delta_{ik} - y_iy_k
-\end{aligned}`$
+\end{aligned}
+`$
 
 Or if we want to split up that delta (δ) condition into two separate equations, we will get:
 

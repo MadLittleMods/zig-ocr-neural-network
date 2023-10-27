@@ -262,21 +262,21 @@ pub const SoftMax = struct {
         for (inputs) |input| {
             exp_sum += @exp(input);
         }
+        const denominator = exp_sum * exp_sum;
 
-        const k = input_index;
-        const exp_k = @exp(inputs[k]);
-        for (inputs, 0..) |_, i| {
+        const i = input_index;
+        const exp_i = @exp(inputs[i]);
+        for (inputs, 0..) |_, k| {
             const delta: f64 = if (i == k) 1 else 0;
 
-            const exp_i = @exp(inputs[i]);
+            const exp_k = @exp(inputs[k]);
 
             // See the [developer notes on SoftMax](../../dev-notes.md#softmax) to
             // see how the equation is derived.
             const numerator = (delta * exp_i * exp_sum) - (exp_i * exp_k);
-            const denominator = exp_sum * exp_sum;
 
             const result_ki = numerator / denominator;
-            results[i] = result_ki;
+            results[k] = result_ki;
         }
 
         return results;

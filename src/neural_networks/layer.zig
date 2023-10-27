@@ -301,7 +301,10 @@ pub const Layer = struct {
             // Evaluate the partial derivative of cost for the current node with respect to its activation
             // dc/da_2 = cost_function.derivative(a_2, expected_output)
             if (self.cost_function) |cost_function| {
-                const cost_derivative = cost_function.individual_derivative(self.layer_output_data.outputs[node_index], expected_outputs[node_index]);
+                const cost_derivative = cost_function.individual_derivative(
+                    self.layer_output_data.outputs[node_index],
+                    expected_outputs[node_index],
+                );
                 cost_derivatives[node_index] = cost_derivative;
             } else {
                 @panic(
