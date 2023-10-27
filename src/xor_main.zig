@@ -6,7 +6,7 @@ const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig
 const time_utils = @import("utils/time_utils.zig");
 
 const TRAINING_EPOCHS = 2000;
-const BATCH_SIZE: u32 = 1;
+const BATCH_SIZE: u32 = 4;
 const LEARN_RATE: f64 = 0.1;
 // Since this problem space doesn't have much curvature, momentum tends to hurt us more
 // with higher values.
