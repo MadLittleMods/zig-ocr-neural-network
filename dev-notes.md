@@ -124,21 +124,22 @@ a_1 &\times&
 
 The partial derivative of cost with respect to the **weight** of the 1st connection.
 (the parts in green are the pieces we're calculating in
-`calculateHiddenLayerShareableNodeDerivatives(...)`)
+`calculateHiddenLayerShareableNodeDerivatives(...)`, the parts in blue come from
+`next_layer_shareable_node_derivatives` that are passed into the function)
 
 $`\begin{aligned}
 \frac{\partial c}{\partial w_1} &=
 \frac{\partial z_1}{\partial w_1} &\times&
 \color{#008b6c}{\frac{\partial a_1}{\partial z_1}} &\times&
 \color{#008b6c}{\frac{\partial z_2}{\partial a_1}} &\times&
-\color{#008b6c}{\frac{\partial a_2}{\partial z_2}} &\times&
-\color{#008b6c}{\frac{\partial c}{\partial a_2}}
+\color{#107bc3}{\frac{\partial a_2}{\partial z_2}} &\times&
+\color{#107bc3}{\frac{\partial c}{\partial a_2}}
 \\&=
 a_0 &\times&
 \color{#008b6c}{\verb|activation_function.derivative|(z_1)} &\times&
 \color{#008b6c}{w_2} &\times&
-\color{#008b6c}{\verb|activation_function.derivative|(z_2)}  &\times&
-\color{#008b6c}{\verb|cost_function.derivative|(a_2, \mathrm{expected\_output})}
+\color{#107bc3}{\verb|activation_function.derivative|(z_2)}  &\times&
+\color{#107bc3}{\verb|cost_function.derivative|(a_2, \mathrm{expected\_output})}
 \end{aligned}`$
 
 The partial derivative of cost with respect to **bias** of the 2nd node. (this applies
