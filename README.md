@@ -6,10 +6,10 @@ to recognize handwritten digits.
 A lot of the phrasing and concepts are taken from the resources linked in the
 [*developer notes*](./dev-notes.md). I'm just trying to piece together all of those
 resources into something that works and is understandable to me as I learn. Major kudos
-to Sebastian Lague, 3Blue1Brown, and Samson Zhang for their excellent resources. And a
-special shoutout to Hans Musgrave ([@hmusgrave](https://github.com/hmusgrave)) for the
-immense amount of help to get my head around these concepts as I got stuck through this
-process.
+to Sebastian Lague, 3Blue1Brown, The Independent Code (Omar Aflak), and Samson Zhang for
+their excellent resources. And a special shoutout to Hans Musgrave
+([@hmusgrave](https://github.com/hmusgrave)) for the immense amount of help to get my
+head around these concepts as I got stuck through this process.
 
 ## Setup
 
