@@ -259,6 +259,7 @@ pub fn main() !void {
         // Graph how the neural network is learning over time.
         if (current_epoch_index % 1000 == 0 and current_epoch_index != 0) {
             try graphNeuralNetwork(
+                "simple_xy_animal_graph.ppm",
                 AnimalDataPoint,
                 &neural_network,
                 &animal_training_data_points,
@@ -270,6 +271,7 @@ pub fn main() !void {
 
     // Graph how the neural network looks at the end of training.
     try graphNeuralNetwork(
+        "simple_xy_animal_graph.ppm",
         AnimalDataPoint,
         &neural_network,
         &animal_training_data_points,

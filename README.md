@@ -111,6 +111,8 @@ XOR ("exclusive or") gate.
 $ zig build run-xor
 ```
 
+![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/887e7323-41e7-4fda-aa58-5989dc437f97)
+
 
 ## Testing
 
