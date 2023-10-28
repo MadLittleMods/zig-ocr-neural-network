@@ -148,7 +148,7 @@ pub fn getMnistData(
         options.num_images_to_train_on,
         allocator,
     );
-    std.log.debug("training labels header {}", .{training_labels_data.header});
+    // std.log.debug("training labels header {}", .{training_labels_data.header});
     try std.testing.expectEqual(training_labels_data.header.magic_number, 2049);
     try std.testing.expectEqual(training_labels_data.header.number_of_labels, 60000);
 
@@ -161,7 +161,7 @@ pub fn getMnistData(
         options.num_images_to_train_on,
         allocator,
     );
-    std.log.debug("training images header {}", .{training_images_data.header});
+    // std.log.debug("training images header {}", .{training_images_data.header});
     try std.testing.expectEqual(training_images_data.header.magic_number, 2051);
     try std.testing.expectEqual(training_images_data.header.number_of_images, 60000);
     try std.testing.expectEqual(training_images_data.header.number_of_rows, 28);
@@ -176,7 +176,7 @@ pub fn getMnistData(
         options.num_images_to_test_on,
         allocator,
     );
-    std.log.debug("testing labels header {}", .{testing_labels_data.header});
+    // std.log.debug("testing labels header {}", .{testing_labels_data.header});
     try std.testing.expectEqual(testing_labels_data.header.magic_number, 2049);
     try std.testing.expectEqual(testing_labels_data.header.number_of_labels, 10000);
 
@@ -189,7 +189,7 @@ pub fn getMnistData(
         options.num_images_to_test_on,
         allocator,
     );
-    std.log.debug("testing images header {}", .{testing_images_data.header});
+    // std.log.debug("testing images header {}", .{testing_images_data.header});
     try std.testing.expectEqual(testing_images_data.header.magic_number, 2051);
     try std.testing.expectEqual(testing_images_data.header.number_of_images, 10000);
     try std.testing.expectEqual(testing_images_data.header.number_of_rows, 28);
