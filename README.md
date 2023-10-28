@@ -40,6 +40,45 @@ which gets to 94% accuracy and creeps to 97% after a few more epochs (60k traini
 images, 10k test images):
 ```sh
 $ zig build run-mnist_ocr
+debug: Created normalized data points. Training on 60000 data points, testing on 10000
+debug: Here is what the first training data point looks like:
+┌──────────┐
+│ Label: 5 │
+┌────────────────────────────────────────────────────────┐
+│                                                        │
+│                                                        │
+│                                                        │
+│                                                        │
+│                                                        │
+│                        ░░░░░░░░▒▒▓▓▓▓░░▓▓████▒▒        │
+│                ░░░░▒▒▓▓▓▓████████████▓▓██████▒▒        │
+│              ░░████████████████████▒▒▒▒▒▒░░░░          │
+│              ░░██████████████▓▓████                    │
+│                ▒▒▓▓▒▒██████░░  ░░▓▓                    │
+│                  ░░░░▓▓██▒▒                            │
+│                      ▓▓██▓▓░░                          │
+│                      ░░▓▓██▒▒                          │
+│                        ░░████▓▓▒▒░░                    │
+│                          ▒▒██████▒▒░░                  │
+│                            ░░▓▓████▓▓░░                │
+│                              ░░▒▒████▓▓                │
+│                                  ██████▒▒              │
+│                            ░░▓▓▓▓██████░░              │
+│                        ░░▓▓██████████▓▓                │
+│                    ░░▒▒████████████▒▒                  │
+│                ░░▒▒████████████▒▒░░                    │
+│            ░░▓▓████████████▒▒░░                        │
+│        ░░▓▓████████████▓▓░░                            │
+│        ▓▓████████▓▓▓▓░░                                │
+│                                                        │
+│                                                        │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+debug: epoch 0   batch 0             3s -> cost 331.64265899045563, accuracy with 100 test points 0.11
+debug: epoch 0   batch 5             4s -> cost 242.16033395427667, accuracy with 100 test points 0.56
+debug: epoch 0   batch 10            5s -> cost 155.62913461977217, accuracy with 100 test points 0.7
+debug: epoch 0   batch 15            5s -> cost 118.45908401769115, accuracy with 100 test points 0.75
+[...]
 ```
 
 To run a basic graphable dataset example that we can visualize, you can use the
