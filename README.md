@@ -38,6 +38,7 @@ Tested with Zig 0.11.0
 With the OCR example, on my machine, I can complete 1 epoch of training in ~1 minute
 which gets to 94% accuracy and creeps to 97% after a few more epochs (60k training
 images, 10k test images):
+
 ```sh
 $ zig build run-mnist_ocr
 debug: Created normalized data points. Training on 60000 data points, testing on 10000
@@ -81,9 +82,18 @@ debug: epoch 0   batch 15            5s -> cost 118.45908401769115, accuracy wit
 [...]
 ```
 
-To run a basic graphable dataset example that we can visualize, you can use the
-`simple_xy_animal_sample_main.zig` example which produces an image called
-`simple_xy_animal_graph.ppm` every 1,000 epochs showing the classification boundary.
+### Other examples
+
+#### Simple animal example 
+
+This is a small dataset that I made up to test the neural network. There are only 2
+arbitrary features (x and y) where the labeled data points (fish and goat) occupy
+distinct parts of the graph. Since there are only 2 input features (which means 2
+dimensions), we can easily graph the neural network's decision/classification boundary.
+It's a good way to visualize the neural network and see how it evolves while training.
+
+This example produces an image called `simple_xy_animal_graph.ppm` every 1,000 epochs
+showing the decision/classification boundary.
 
 ```sh
 $ zig build run-simple_xy_animal_sample
@@ -92,8 +102,10 @@ $ zig build run-simple_xy_animal_sample
 ![](https://github.com/MadLittleMods/zig-ocr-neural-network/assets/558581/128ca52f-0f6f-42ae-8d7e-c557ad943706)
 
 
-There is also the most barebones XOR example which just trains a neural network to act
-like a XOR gate.
+#### Barebones XOR example
+
+There is also a barebones XOR example which just trains a neural network to act like a
+XOR ("exclusive or") gate.
 
 ```sh
 $ zig build run-xor
