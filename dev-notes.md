@@ -4,14 +4,14 @@
 ## Reference
 
  - How to Create a Neural Network (and Train it to Identify Doodles) by Sebastian Lague, https://www.youtube.com/watch?v=hfMk-kjRv4c
- - Deep neural networks (DNNs) from scratch in Zig by Monad Monkey, https://monadmonkey.com/dnns-from-scratch-in-zig
-    - Project repo: https://github.com/SilasMarvin/dnns-from-scratch-in-zig/
-    - Discussed on [HackerNews](https://news.ycombinator.com/item?id=35696776) and [Reddit](https://www.reddit.com/r/Zig/comments/12xz0sf/deep_neural_networks_from_scratch_in_zig/)
- - Series by 3Blue1Brown
+    - Project repo: https://github.com/SebLague/Neural-Network-Experiments
+ - Deep learning series by 3Blue1Brown
     - But what is a neural network? | Chapter 1, Deep learning by, https://www.youtube.com/watch?v=aircAruvnKk
     - Gradient descent, how neural networks learn | Chapter 2, Deep learning, https://www.youtube.com/watch?v=IHZwWFHWa-w
     - What is backpropagation really doing? | Chapter 3, Deep learning, https://www.youtube.com/watch?v=Ilg3gGewQ5U
     - Backpropagation calculus | Chapter 4, Deep learning, https://www.youtube.com/watch?v=tIeHLnjs5U8
+ - Nerual Networks series by The Independent Code (Omar Aflak), https://www.youtube.com/playlist?list=PLQ4osgQ7WN6PGnvt6tzLAVAEMsL3LBqpm
+    - Project repo: https://github.com/TheIndependentCode/Neural-Network
  - Building a neural network FROM SCRATCH (no Tensorflow/Pytorch, just numpy & math) by Samson Zhang, https://www.youtube.com/watch?v=w8yWXqWQYmU (example against the MNIST dataset)
     - https://www.samsonzhang.com/2020/11/24/understanding-the-math-behind-neural-networks-by-building-one-from-scratch-no-tf-keras-just-numpy
     - https://www.kaggle.com/code/wwsalmon/simple-mnist-nn-from-scratch-numpy-no-tf-keras/notebook
@@ -387,22 +387,18 @@ $`\begin{aligned}
 \end{aligned}`$
 
 
-## Other nerual network implementations
+## Other neural network implementations
 
- - https://github.com/SebLague/Neural-Network-Experiments
-    - This codebase has a great video going over all of the details/implementation of the
-      code: https://www.youtube.com/watch?v=hfMk-kjRv4c
+ - Deep neural networks (DNNs) from scratch in Zig by Monad Monkey, https://monadmonkey.com/dnns-from-scratch-in-zig
+    - Project repo: https://github.com/SilasMarvin/dnns-from-scratch-in-zig/
+    - Discussed on [HackerNews](https://news.ycombinator.com/item?id=35696776) and [Reddit](https://www.reddit.com/r/Zig/comments/12xz0sf/deep_neural_networks_from_scratch_in_zig/)
  - https://github.com/hmusgrave/zsmallnet
  - https://github.com/albert-yu/mnist
  - https://github.com/yettinmoor/mnist
- - https://github.com/SilasMarvin/dnns-from-scratch-in-zig/
-    - Associated article: https://monadmonkey.com/dnns-from-scratch-in-zig
  - https://github.com/garrisonhh/perceptron
  - https://github.com/Deins/zig-nnet
     - Has lots of nice comments
  - https://github.com/star-tek-mb/mnist-predictor
- - Python and NumPy: https://github.com/TheIndependentCode/Neural-Network
-    - This codebase has a whole YouTube series behind it, ex. [*Softmax Layer from Scratch | Mathematics & Python Code*](https://www.youtube.com/watch?v=AbLvJVwySEo)
 
 
 ## Zig
