@@ -5,7 +5,7 @@ const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig").graphNeuralNetwork;
 const time_utils = @import("utils/time_utils.zig");
 
-const TRAINING_EPOCHS = 2000;
+const TRAINING_EPOCHS = 200000;
 const BATCH_SIZE: u32 = 4;
 const LEARN_RATE: f64 = 0.1;
 // Since this problem space doesn't have much curvature, momentum tends to hurt us more
@@ -137,26 +137,26 @@ pub fn main() !void {
             }
         }
 
-        // TODO: Update graphNeuralNetwork to allow for different file names
         // Graph how the neural network is learning over time.
-        // if (current_epoch_index % 1000 == 0 and current_epoch_index != 0) {
-        //     try graphNeuralNetwork(
-        //         XorDataPoint,
-        //         &neural_network,
-        //         &xor_data_points,
-        //         &xor_data_points,
-        //         allocator,
-        //     );
-        // }
+        if (current_epoch_index % 50000 == 0 and current_epoch_index != 0) {
+            try graphNeuralNetwork(
+                "xor_graph.ppm",
+                XorDataPoint,
+                &neural_network,
+                &xor_data_points,
+                &xor_data_points,
+                allocator,
+            );
+        }
     }
 
-    // TODO: Update graphNeuralNetwork to allow for different file names
     // Graph how the neural network looks at the end of training.
-    // try graphNeuralNetwork(
-    //     XorDataPoint,
-    //     &neural_network,
-    //     &xor_data_points,
-    //     &xor_data_points,
-    //     allocator,
-    // );
+    try graphNeuralNetwork(
+        "xor_graph.ppm",
+        XorDataPoint,
+        &neural_network,
+        &xor_data_points,
+        &xor_data_points,
+        allocator,
+    );
 }
