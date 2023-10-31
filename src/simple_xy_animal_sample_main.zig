@@ -3,7 +3,6 @@ const shuffle = @import("zshuffle").shuffle;
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig").graphNeuralNetwork;
-const time_utils = @import("utils/time_utils.zig");
 
 const TRAINING_EPOCHS = 2000;
 const BATCH_SIZE: u32 = 10;
@@ -235,11 +234,6 @@ pub fn main() !void {
             {
                 const current_timestamp_seconds = std.time.timestamp();
                 const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
-                const duration_string = try time_utils.formatDuration(
-                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
-                    allocator,
-                );
-                defer allocator.free(duration_string);
 
                 const cost = try neural_network.cost_many(&animal_testing_data_points, allocator);
                 const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
@@ -249,7 +243,7 @@ pub fn main() !void {
                 std.log.debug("epoch {d: <5} batch {d: <2} {s: >12} -> cost {d}, accuracy with testing points {d}", .{
                     current_epoch_index,
                     batch_index,
-                    duration_string,
+                    std.fmt.fmtDurationSigned(runtime_duration_seconds * std.time.ns_per_s),
                     cost,
                     accuracy,
                 });
