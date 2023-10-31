@@ -49,9 +49,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    const all_step = b.step("all", "build all examples");
-
     // Based on the zap build: https://github.com/zigzap/zap/blob/8a2d077bd8627c429de4fef3b1899296e6201c0a/build.zig
+    const all_step = b.step("all", "build all examples");
     inline for ([_]struct {
         name: []const u8,
         src: []const u8,
