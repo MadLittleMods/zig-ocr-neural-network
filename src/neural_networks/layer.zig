@@ -427,7 +427,7 @@ pub const Layer = struct {
                     // for the activation function.
                     //
                     // da_2/dz_2 = activation_function.derivative(z_2)
-                    const activation_ki_derivatives = try self.activation_function.gradient(
+                    const activation_ki_derivatives = try self.activation_function.jacobian_row(
                         self.layer_output_data.weighted_input_sums,
                         node_index,
                         allocator,
@@ -435,10 +435,12 @@ pub const Layer = struct {
                     defer allocator.free(activation_ki_derivatives);
 
                     // This is just a dot product of the `activation_ki_derivatives` and
-                    // `cost_derivatives` (both vectors).
-                    for (activation_ki_derivatives, 0..) |_, gradient_index| {
-                        shareable_node_derivatives[node_index] += activation_ki_derivatives[gradient_index] *
-                            cost_derivatives[gradient_index];
+                    // `cost_derivatives` (both vectors). Or can also be thought of as a
+                    // matrix multiplication between a 1xn matrix
+                    // (activation_ki_derivatives) and a nx1 matrix (cost_derivatives).
+                    for (activation_ki_derivatives, 0..) |_, activation_derivative_index| {
+                        shareable_node_derivatives[node_index] += activation_ki_derivatives[activation_derivative_index] *
+                            cost_derivatives[activation_derivative_index];
                     }
                 },
             }

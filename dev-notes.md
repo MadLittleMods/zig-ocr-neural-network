@@ -174,12 +174,12 @@ scalar value with whatever we need to afterwards without thinking about it.
 ---
 
 Note: You might only care about this section if you're trying to figure out why we need
-a `gradient` function for `SoftMax` or are trying to understand the code in
+a `jacobian_row` function for `SoftMax` or are trying to understand the code in
 `calculateOutputLayerShareableNodeDerivatives(...)`. It's mainly just to illustrate a
 point for comparison with the derivative of multi-input activation functions like
 `SoftMax` explained in the section below.
 
-We don't need to specify a `gradient` function for single-input activation functions. We
+We don't need to specify a `jacobian_row` function for single-input activation functions. We
 can simply use the `derivative` with a single-input activation functions.
 
 This characteristic can be conveyed by using a Jacobian matrix to get the derivative of
@@ -329,7 +329,7 @@ $`\begin{bmatrix}
 \frac{\partial y_4}{\partial x_1} & \frac{\partial y_4}{\partial x_4} & \frac{\partial y_4}{\partial x_3} & \frac{\partial y_4}{\partial x_4}\\
 \end{bmatrix}`$
 
-In the context of the code, the `derivative`/`gradient` functions assemble a single row
+In the context of the code, the `derivative`/`jacobian_row` functions assemble a single row
 of this matrix at a time. The row is specified by the `node_index` which ends up getting
 passed in as the `input_index` with the activation functions.
 
@@ -354,7 +354,7 @@ from activation function `derivative` by the partial derivative of the cost with
 to the input of that node (($`\frac{\partial C}{\partial y_i}`$)).
 
 But when using a multi-input activation function like `SoftMax`, we need to take dot
-product the activation `gradient` with the whole cost vector ($`\frac{\partial
+product the activation `jacobian_row` with the whole cost vector ($`\frac{\partial
 C}{\partial y}`$). Remember, we're showing a whole matrix here, but the code just takes
 it row by row (specified by the `node_index` which ends up getting passed in as the
 `input_index` with the activation functions).

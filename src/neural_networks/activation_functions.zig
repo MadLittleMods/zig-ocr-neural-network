@@ -169,8 +169,9 @@ pub const Sigmoid = struct {
 //    https://www.youtube.com/watch?v=AbLvJVwySEo
 //  - https://themaverickmeerkat.com/2019-10-23-Softmax/
 pub const SoftMax = struct {
-    // SoftMax is not a single-input activation function. It uses all of the given `inputs`
-    // to produce a single output. So we need to make sure to define a `gradient` function.
+    // SoftMax is not a single-input activation function. It uses all of the given
+    // `inputs` to produce a single output. So we need to make sure to define a
+    // `jacobian_row` function.
     pub const has_single_input_activation_function = false;
 
     pub fn activate(_: @This(), inputs: []const f64, input_index: usize) f64 {
@@ -207,7 +208,7 @@ pub const SoftMax = struct {
     // ┗                    𝝏x_4  ┛
     //
     // This is only defined for completeness sake but backpropagation should use the
-    // `gradient` function instead which calculates the actual derivative of the
+    // `jacobian_row` function instead which calculates the actual derivative of the
     // activation function. Empirically (in practice), using the `derivative` function
     // will allow the neural network to converge successfully but it's unclear/not
     // measured on how much this causes us to wander around the cost/loss surface or
@@ -225,9 +226,9 @@ pub const SoftMax = struct {
         return (exp_input * exp_sum - exp_input * exp_input) / (exp_sum * exp_sum);
     }
 
-    // Returns all of the partial derivatives of the activation function with respect to
-    // the input at the given index (x_k). This function returns a single row (specified
-    // by `input_index`) of the Jacobian matrix.
+    // Returns all of the partial derivatives of the activation function (y_i) with
+    // respect to the input at the given index (x_k). This function returns a single row
+    // (specified by `input_index`) of the Jacobian matrix.
     //
     // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
     // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
@@ -241,17 +242,15 @@ pub const SoftMax = struct {
     // ┃  𝝏y_4  𝝏y_4  𝝏y_4  𝝏y_4  ┃
     // ┗  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┛
     //
-    // A gradient is just a vector (list) of derivatives.
-    //
     // Because the SoftMax activation function uses multiple inputs to produce a single
     // output, when we use a Jacobian matrix to find the derivative of the activation
     // function, all of elements will be defined (full, not sparse). This means that we
-    // need to use the `gradient` function to accurately calculate the results during
-    // backpropagation. Since this is SoftMax, this activation function will be used as
-    // the final step of the output layer and will be dot producted with the
+    // need to use the `jacobian_row()` function to accurately calculate the results
+    // during backpropagation. Since this is SoftMax, this activation function will be
+    // used as the final step of the output layer and will be dot producted with the
     // cost/loss/error vector to calculate the partial derivaties of the cost with
     // respect to the input (see `shareable_node_derivatives`).
-    pub fn gradient(
+    pub fn jacobian_row(
         _: @This(),
         inputs: []const f64,
         input_index: usize,
@@ -478,7 +477,7 @@ pub const ActivationFunction = union(enum) {
 
     // Returns whether or not the activation function uses a single input to produce a single
     // output. This distinction is useful for optimizations and we can use this to determine
-    // whether we need to use the more expensive `gradient` function or an efficient shortcut
+    // whether we need to use the more expensive `jacobian_row` function or an efficient shortcut
     // with the `derivative` function.
     //
     // Hint: Most activation functions are single-input activation functions (except for SoftMax).
@@ -488,10 +487,10 @@ pub const ActivationFunction = union(enum) {
         };
     }
 
-    // The `gradient` function produces a row vector of derivatives that we can think of
-    // as a row in Jacobian matrix with the same square size as the number of `inputs`.
-    // Each item in the row is the partial derivative of the activation function with
-    // respect to the input at the given index (x_k).
+    // The `jacobian_row` function produces a row vector of derivatives that we can
+    // think of as a row in Jacobian matrix with the same square size as the number of
+    // `inputs`. Each item in the row is the partial derivative of the activation
+    // function with respect to the input at the given index (x_k).
     //
     // Jacobian matrix example:
     // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
@@ -506,11 +505,11 @@ pub const ActivationFunction = union(enum) {
     // ┃  𝝏y_4  𝝏y_4  𝝏y_4  𝝏y_4  ┃
     // ┗  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┛
     //
-    // Note: Single-input activation functions do not need to define a gradient function
-    // and should use the shortcut as described below.
+    // Note: Single-input activation functions do not need to define a `jacobian_row`
+    // function and should use the shortcut as described below.
     //
-    // Single-input activation functions produce a sparse Jacobian gradient where only
-    // the diagonal elements are defined. We can use this characteristic to efficiently
+    // Single-input activation functions produce a sparse Jacobian matrix where only the
+    // diagonal elements are defined. We can use this characteristic to efficiently
     // shortcut and just use a single `derivative` since the other elements end up
     // getting multiplied by 0 and don't contribute to the result anyway.
     //
@@ -526,7 +525,7 @@ pub const ActivationFunction = union(enum) {
     // ┃                          ┃
     // ┃   0     0     0    𝝏y_4  ┃
     // ┗                    𝝏x_4  ┛
-    pub fn gradient(
+    pub fn jacobian_row(
         self: @This(),
         inputs: []const f64,
         input_index: usize,
@@ -534,9 +533,9 @@ pub const ActivationFunction = union(enum) {
     ) ![]f64 {
         return switch (self) {
             inline else => |case| {
-                // Use the gradient function if the activation function has one
-                if (comptime std.meta.trait.hasFn("gradient")(@TypeOf(case))) {
-                    return case.gradient(inputs, input_index, allocator);
+                // Use the `jacobian_row` function if the activation function has one
+                if (comptime std.meta.trait.hasFn("jacobian_row")(@TypeOf(case))) {
+                    return case.jacobian_row(inputs, input_index, allocator);
                 }
                 // Otherwise, if it is a single-input activation function, we can
                 // provide a default implementation that just puts the derivatives along
@@ -555,12 +554,12 @@ pub const ActivationFunction = union(enum) {
                     return results;
                 } else {
                     std.log.err(
-                        "Activation function ({s}) does not have a `gradient` function and does " ++
-                            "not have a sparse gradient so we can't provide a default implementation " ++
+                        "Activation function ({s}) does not have a `jacobian_row` function and does " ++
+                            "not have a sparse Jacobian matrix so we can't provide a default implementation " ++
                             "using the `derivative` function",
                         .{self.getName()},
                     );
-                    return error.ActivationFunctionDoesNotHaveGradientFunction;
+                    return error.ActivationFunctionDoesNotHaveJacobianRowFunction;
                 }
             },
         };
