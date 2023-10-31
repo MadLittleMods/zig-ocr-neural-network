@@ -228,7 +228,7 @@ pub const SoftMax = struct {
 
     // Returns all of the partial derivatives of the activation function (y_i) with
     // respect to the input at the given index (x_k). This function returns a single row
-    // (specified by `input_index`) of the Jacobian matrix.
+    // (specified by `row_index`) of the Jacobian matrix.
     //
     // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
     // ┃  𝝏x_1  𝝏x_2  𝝏x_3  𝝏x_4  ┃
@@ -253,7 +253,7 @@ pub const SoftMax = struct {
     pub fn jacobian_row(
         _: @This(),
         inputs: []const f64,
-        input_index: usize,
+        row_index: usize,
         allocator: std.mem.Allocator,
     ) ![]f64 {
         var results = try allocator.alloc(f64, inputs.len);
@@ -264,7 +264,7 @@ pub const SoftMax = struct {
         }
         const denominator = exp_sum * exp_sum;
 
-        const i = input_index;
+        const i = row_index;
         const exp_i = @exp(inputs[i]);
         for (inputs, 0..) |_, k| {
             const delta: f64 = if (i == k) 1 else 0;
@@ -453,6 +453,18 @@ pub const ActivationFunction = union(enum) {
         };
     }
 
+    // Returns whether or not the activation function uses a single input to produce a
+    // single output. This distinction is useful for optimizations and we can use this
+    // to determine whether we need to use the more expensive `jacobian_row` function or
+    // an efficient shortcut with the `derivative` function.
+    //
+    // Hint: Most activation functions are single-input activation functions (except for SoftMax).
+    pub fn hasSingleInputActivationFunction(self: @This()) bool {
+        return switch (self) {
+            inline else => |case| @TypeOf(case).has_single_input_activation_function,
+        };
+    }
+
     /// A derivative is just the slope of the activation function at a given point.
     pub fn derivative(self: @This(), inputs: []const f64, input_index: usize) f64 {
         return switch (self) {
@@ -475,22 +487,10 @@ pub const ActivationFunction = union(enum) {
         };
     }
 
-    // Returns whether or not the activation function uses a single input to produce a single
-    // output. This distinction is useful for optimizations and we can use this to determine
-    // whether we need to use the more expensive `jacobian_row` function or an efficient shortcut
-    // with the `derivative` function.
-    //
-    // Hint: Most activation functions are single-input activation functions (except for SoftMax).
-    pub fn hasSingleInputActivationFunction(self: @This()) bool {
-        return switch (self) {
-            inline else => |case| @TypeOf(case).has_single_input_activation_function,
-        };
-    }
-
     // The `jacobian_row` function produces a row vector of derivatives that we can
     // think of as a row in Jacobian matrix with the same square size as the number of
     // `inputs`. Each item in the row is the partial derivative of the activation
-    // function with respect to the input at the given index (x_k).
+    // function (y_i) with respect to the input at the given index (x_k).
     //
     // Jacobian matrix example:
     // ┏  𝝏y_1  𝝏y_1  𝝏y_1  𝝏y_1  ┓
@@ -528,14 +528,14 @@ pub const ActivationFunction = union(enum) {
     pub fn jacobian_row(
         self: @This(),
         inputs: []const f64,
-        input_index: usize,
+        row_index: usize,
         allocator: std.mem.Allocator,
     ) ![]f64 {
         return switch (self) {
             inline else => |case| {
                 // Use the `jacobian_row` function if the activation function has one
                 if (comptime std.meta.trait.hasFn("jacobian_row")(@TypeOf(case))) {
-                    return case.jacobian_row(inputs, input_index, allocator);
+                    return case.jacobian_row(inputs, row_index, allocator);
                 }
                 // Otherwise, if it is a single-input activation function, we can
                 // provide a default implementation that just puts the derivatives along
@@ -543,13 +543,13 @@ pub const ActivationFunction = union(enum) {
                 else if (comptime @TypeOf(case).has_single_input_activation_function) {
                     var results = try allocator.alloc(f64, inputs.len);
                     @memset(results, 0);
-                    // Given the `input_index`, we know what row of the Jacobian matrix
+                    // Given the `row_index`, we know what row of the Jacobian matrix
                     // we're on; so we can just put the derivative along the diagonal by placing
-                    // at the `input_index` of that row.
+                    // at the `row_index` of that row.
                     //
-                    // Fore example, when `inputs.len = 4` and input_index = 3`
+                    // Fore example, when `inputs.len = 4` and row_index = 2`
                     // -> [0, 0, derivative, 0]
-                    results[input_index] = self.derivative(inputs, input_index);
+                    results[row_index] = self.derivative(inputs, row_index);
 
                     return results;
                 } else {
