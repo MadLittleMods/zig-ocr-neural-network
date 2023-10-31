@@ -4,7 +4,6 @@ const mnist_data_utils = @import("mnist/mnist_data_utils.zig");
 const mnist_print_utils = @import("mnist/print_utils.zig");
 const neural_networks = @import("neural_networks/neural_networks.zig");
 const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
-const time_utils = @import("utils/time_utils.zig");
 
 // Adjust as necessary. To make the program run faster, you can reduce the number of
 // images to train on and test on. To make the program more accurate, you can increase
@@ -154,11 +153,6 @@ pub fn main() !void {
             if (batch_index % 5 == 0) {
                 const current_timestamp_seconds = std.time.timestamp();
                 const runtime_duration_seconds = current_timestamp_seconds - start_timestamp_seconds;
-                const duration_string = try time_utils.formatDuration(
-                    runtime_duration_seconds * time_utils.ONE_SECOND_MS,
-                    allocator,
-                );
-                defer allocator.free(duration_string);
 
                 const cost = try neural_network.cost_many(testing_data_points[0..NUM_OF_IMAGES_TO_QUICK_TEST_ON], allocator);
                 const accuracy = try neural_network.getAccuracyAgainstTestingDataPoints(
@@ -168,7 +162,7 @@ pub fn main() !void {
                 std.log.debug("epoch {d: <3} batch {d: <3} {s: >12} -> cost {d}, accuracy with {d} test points {d}", .{
                     current_epoch_index,
                     batch_index,
-                    duration_string,
+                    std.fmt.fmtDurationSigned(runtime_duration_seconds * std.time.ns_per_s),
                     cost,
                     NUM_OF_IMAGES_TO_QUICK_TEST_ON,
                     accuracy,
