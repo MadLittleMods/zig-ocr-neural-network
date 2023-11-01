@@ -292,6 +292,8 @@ pub const SoftMax = struct {
 fn estimateSlopeOfActivationFunction(
     activation_function: ActivationFunction,
     inputs: []const f64,
+    // Find out how much output of the activate function at the given `input_index`
+    // changes if we make a nudge to the input at `input_to_nudge_index`
     input_index: usize,
     input_to_nudge_index: usize,
 ) !f64 {
@@ -302,12 +304,12 @@ fn estimateSlopeOfActivationFunction(
     // We want h to be small but not too small to cause float point precision problems.
     const h = 0.0001;
 
-    // Make a small nudge the input in the positive direction (+ h)
+    // Make a small nudge to the input in the positive direction (+ h)
     mutable_inputs[input_to_nudge_index] += h;
     // Check how much that nudge causes the result to change
     const result1 = activation_function.activate(mutable_inputs, input_index);
 
-    // Make a small nudge the weight in the negative direction (- h). We
+    // Make a small nudge to the weight in the negative direction (- h). We
     // `- 2h` because we nudged the weight in the positive direction by
     // `h` just above and want to get back original_value first so we
     // minus h, and then minus h again to get to (- h).

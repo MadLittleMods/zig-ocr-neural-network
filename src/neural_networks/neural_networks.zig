@@ -445,12 +445,12 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
                 for (0..layer.num_input_nodes) |node_in_index| {
                     const weight_index = layer.getFlatWeightIndex(node_index, node_in_index);
 
-                    // Make a small nudge the weight in the positive direction (+ h)
+                    // Make a small nudge to the weight in the positive direction (+ h)
                     layer.weights[weight_index] += h;
                     // Check how much that nudge causes the cost to change
                     const cost1 = try self.cost_many(training_data_batch, allocator);
 
-                    // Make a small nudge the weight in the negative direction (- h). We
+                    // Make a small nudge to the weight in the negative direction (- h). We
                     // `- 2h` because we nudged the weight in the positive direction by
                     // `h` just above and want to get back original_value first so we
                     // minus h, and then minus h again to get to (- h).
@@ -470,12 +470,12 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
 
             // Calculate the cost gradient for the current biases
             for (0..layer.num_output_nodes) |node_index| {
-                // Make a small nudge the bias (+ h)
+                // Make a small nudge to the bias (+ h)
                 layer.biases[node_index] += h;
                 // Check how much that nudge causes the cost to change
                 const cost1 = try self.cost_many(training_data_batch, allocator);
 
-                // Make a small nudge the bias in the negative direction (- h). We
+                // Make a small nudge to the bias in the negative direction (- h). We
                 // `- 2h` because we nudged the bias in the positive direction by
                 // `h` just above and want to get back original_value first so we
                 // minus h, and then minus h again to get to (- h).
