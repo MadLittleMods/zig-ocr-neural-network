@@ -152,12 +152,12 @@ fn estimateSlopeOfCostFunction(
 
     var mutable_actual_output = actual_output;
 
-    // Make a small nudge the input in the positive direction (+ h)
+    // Make a small nudge to the input in the positive direction (+ h)
     mutable_actual_output += h;
     // Check how much that nudge causes the result to change
     const result1 = cost_function.individual_cost(mutable_actual_output, expected_output);
 
-    // Make a small nudge the weight in the negative direction (- h). We
+    // Make a small nudge to the weight in the negative direction (- h). We
     // `- 2h` because we nudged the weight in the positive direction by
     // `h` just above and want to get back original_value first so we
     // minus h, and then minus h again to get to (- h).
@@ -278,10 +278,9 @@ test "Slope check cost functions" {
         // by the derivative function should be the same as the slope we estimated.
         const actual_slope = cost_function.individual_derivative(actual_output, expected_output);
 
-        // Check to make sure the actual slope is within a certain threshold of the
-        // estimated slope
-        const threshold = 1e-4;
-        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
+        // Check to make sure the actual slope is within a certain threshold/tolerance
+        // of the estimated slope
+        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, 1e-4);
     }
 }
 

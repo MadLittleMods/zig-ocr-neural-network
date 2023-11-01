@@ -292,7 +292,10 @@ pub const SoftMax = struct {
 fn estimateSlopeOfActivationFunction(
     activation_function: ActivationFunction,
     inputs: []const f64,
+    // Find out how much output of the activate function at the given `input_index`
+    // changes if we make a nudge to the input at `input_to_nudge_index`
     input_index: usize,
+    input_to_nudge_index: usize,
 ) !f64 {
     var mutable_inputs = try std.testing.allocator.alloc(f64, inputs.len);
     defer std.testing.allocator.free(mutable_inputs);
@@ -301,23 +304,23 @@ fn estimateSlopeOfActivationFunction(
     // We want h to be small but not too small to cause float point precision problems.
     const h = 0.0001;
 
-    // Make a small nudge the input in the positive direction (+ h)
-    mutable_inputs[input_index] += h;
+    // Make a small nudge to the input in the positive direction (+ h)
+    mutable_inputs[input_to_nudge_index] += h;
     // Check how much that nudge causes the result to change
     const result1 = activation_function.activate(mutable_inputs, input_index);
 
-    // Make a small nudge the weight in the negative direction (- h). We
+    // Make a small nudge to the weight in the negative direction (- h). We
     // `- 2h` because we nudged the weight in the positive direction by
     // `h` just above and want to get back original_value first so we
     // minus h, and then minus h again to get to (- h).
-    mutable_inputs[input_index] -= 2 * h;
+    mutable_inputs[input_to_nudge_index] -= 2 * h;
     // Check how much that nudge causes the cost to change
     const result2 = activation_function.activate(mutable_inputs, input_index);
     // Find how much the cost changed between the two nudges
     const delta_result = result1 - result2;
 
     // Reset the input back to its original value
-    mutable_inputs[input_index] += h;
+    mutable_inputs[input_to_nudge_index] += h;
 
     // Calculate the gradient: change in activation / change in input (which is 2h)
     const estimated_slope = delta_result / (2 * h);
@@ -331,9 +334,9 @@ const ActivationTestCase = struct {
     input_index: usize,
 };
 
-// Cross-check the activate function against the derivative function to make sure they
+// Cross-check the `activate` function against the `derivative` function to make sure they
 // relate and match up to each other.
-test "Slope check activation functions" {
+test "Slope check single-input `activation` functions with their derivative" {
     var test_cases = [_]ActivationTestCase{
         .{
             .activation_function = ActivationFunction{ .relu = .{} },
@@ -401,6 +404,35 @@ test "Slope check activation functions" {
             .inputs = &[_]f64{ -0.2, 0.1, 0.0, 0.1, 0.2 },
             .input_index = 2,
         },
+    };
+
+    for (test_cases) |test_case| {
+        var activation_function = test_case.activation_function;
+        var inputs = test_case.inputs;
+        const input_index = test_case.input_index;
+
+        // Estimate the slope of the activation function at the given input
+        const estimated_slope = try estimateSlopeOfActivationFunction(
+            activation_function,
+            inputs,
+            input_index,
+            input_index,
+        );
+
+        // A derivative is just the slope of the given function. So the slope returned
+        // by the `derivative` function should be the same as the slope we estimated.
+        const actual_slope = activation_function.derivative(inputs, input_index);
+
+        // Check to make sure the actual slope is within a certain threshold/tolerance
+        // of the estimated slope
+        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, 1e-4);
+    }
+}
+
+// Cross-check the `activate` function against the `jacobian_row` function to make sure
+// they relate and match up to each other.
+test "Slope check multi-input `activation` functions with their `jacobian_row`" {
+    var test_cases = [_]ActivationTestCase{
         .{
             .activation_function = ActivationFunction{ .soft_max = .{} },
             .inputs = &[_]f64{ 0.1, 0.2, 0.3, 0.4, 0.5 },
@@ -421,22 +453,44 @@ test "Slope check activation functions" {
     for (test_cases) |test_case| {
         var activation_function = test_case.activation_function;
         var inputs = test_case.inputs;
-        const input_index = test_case.input_index;
+        const row_index = test_case.input_index;
 
-        // Estimate the slope of the activation function at the given input
-        const estimated_slope = try estimateSlopeOfActivationFunction(
-            activation_function,
+        // A Jacobian matrix allows us to take the derivative a function with respect to
+        // all of it's inputs. In this case, we get the partial derivative of the
+        // activation function (y_i) with respect to each specific input (x_k).
+        //
+        // Since a derivative is just the slope of the given function, the slopes
+        // returned by the `jacobian_row` function should be the same as the slope we
+        // estimate.
+        const actual_slopes = try activation_function.jacobian_row(
             inputs,
-            input_index,
+            test_case.input_index,
+            std.testing.allocator,
         );
-        // A derivative is just the slope of the given function. So the slope returned
-        // by the derivative function should be the same as the slope we estimated.
-        const actual_slope = activation_function.derivative(inputs, input_index);
+        defer std.testing.allocator.free(actual_slopes);
 
-        // Check to make sure the actual slope is within a certain threshold of the
-        // estimated slope
-        const threshold = 1e-4;
-        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
+        // Loop through each input to find the slope of the activation function with
+        // respect to that input
+        for (inputs, 0..) |_, input_index| {
+            // Estimate the slope of the activation function with the given input (y_i =
+            // SoftMax(x_i)) with respect to specific input (x_k). 𝝏y_i/𝝏x_k
+            const estimated_slope = try estimateSlopeOfActivationFunction(
+                activation_function,
+                inputs,
+                // We are asking for the slope of y_i
+                row_index,
+                // with respect to x_k. We nudge x_k and see how much it affects y_i
+                input_index,
+            );
+
+            // Check to make sure the actual slope is within a certain threshold/tolerance
+            // of the estimated slope.
+            try std.testing.expectApproxEqAbs(
+                estimated_slope,
+                actual_slopes[input_index],
+                1e-4,
+            );
+        }
     }
 }
 
