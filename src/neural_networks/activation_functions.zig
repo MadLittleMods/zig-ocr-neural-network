@@ -331,9 +331,9 @@ const ActivationTestCase = struct {
     input_index: usize,
 };
 
-// Cross-check the activate function against the derivative function to make sure they
+// Cross-check the `activate` function against the `derivative` function to make sure they
 // relate and match up to each other.
-test "Slope check activation functions" {
+test "Slope check activation/derivative functions" {
     var test_cases = [_]ActivationTestCase{
         .{
             .activation_function = ActivationFunction{ .relu = .{} },
@@ -429,14 +429,31 @@ test "Slope check activation functions" {
             inputs,
             input_index,
         );
-        // A derivative is just the slope of the given function. So the slope returned
-        // by the derivative function should be the same as the slope we estimated.
-        const actual_slope = activation_function.derivative(inputs, input_index);
 
-        // Check to make sure the actual slope is within a certain threshold of the
-        // estimated slope
-        const threshold = 1e-4;
-        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
+        var actual_slope: f64 = 0.0;
+        switch (activation_function.hasSingleInputActivationFunction()) {
+            true => {
+                // A derivative is just the slope of the given function. So the slope returned
+                // by the `derivative` function should be the same as the slope we estimated.
+                actual_slope = activation_function.derivative(inputs, input_index);
+            },
+            false => {
+                const jacobian_row = try activation_function.jacobian_row(
+                    inputs,
+                    test_case.input_index,
+                    std.testing.allocator,
+                );
+                defer std.testing.allocator.free(jacobian_row);
+
+                // Unfortunately, we can only test the y_i/x_k where i = k derivative
+                // with this slope estimatation technique. TODO: Because why??
+                actual_slope = jacobian_row[input_index];
+            },
+        }
+
+        // Check to make sure the actual slope is within a certain threshold/tolerance
+        // of the estimated slope
+        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, 1e-4);
     }
 }
 

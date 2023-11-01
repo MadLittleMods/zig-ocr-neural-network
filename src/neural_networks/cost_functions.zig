@@ -278,10 +278,9 @@ test "Slope check cost functions" {
         // by the derivative function should be the same as the slope we estimated.
         const actual_slope = cost_function.individual_derivative(actual_output, expected_output);
 
-        // Check to make sure the actual slope is within a certain threshold of the
-        // estimated slope
-        const threshold = 1e-4;
-        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, threshold);
+        // Check to make sure the actual slope is within a certain threshold/tolerance
+        // of the estimated slope
+        try std.testing.expectApproxEqAbs(estimated_slope, actual_slope, 1e-4);
     }
 }
 
