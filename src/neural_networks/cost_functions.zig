@@ -268,7 +268,7 @@ test "Slope check cost functions" {
         const actual_output = test_case.actual_output;
         const expected_output = test_case.expected_output;
 
-        // Estimate the slope of the activation function at the given input
+        // Estimate the slope of the cost function at the given input
         const estimated_slope = try estimateSlopeOfCostFunction(
             cost_function,
             actual_output,

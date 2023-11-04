@@ -1,7 +1,6 @@
 const std = @import("std");
 const shuffle = @import("zshuffle").shuffle;
 const neural_networks = @import("neural_networks/neural_networks.zig");
-const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig").graphNeuralNetwork;
 
 const TRAINING_EPOCHS = 200000;
@@ -21,8 +20,6 @@ const xor_labels = [_]u8{
     1,
 };
 const XorDataPoint = neural_networks.DataPoint(u8, &xor_labels);
-// Graph of animal data points:
-// https://www.desmos.com/calculator/tkfacez5wt
 var xor_data_points = [_]XorDataPoint{
     XorDataPoint.init(&[_]f64{ 0, 0 }, 0),
     XorDataPoint.init(&[_]f64{ 0, 1 }, 1),
@@ -74,7 +71,7 @@ pub fn main() !void {
     ) : (current_epoch_index += 1) {
         // We assume the data is already shuffled so we skip shuffling on the first
         // epoch. Using a pre-shuffled dataset also gives us nice reproducible results
-        // during the first epoch when trying to debug things.
+        // during the first epoch when trying to debug things (like gradient checking).
         var shuffled_training_data_points: []XorDataPoint = &xor_data_points;
         if (current_epoch_index > 0) {
             // Shuffle the data after each epoch
@@ -132,7 +129,7 @@ pub fn main() !void {
         }
 
         // Graph how the neural network is learning over time.
-        if (current_epoch_index % 50000 == 0 and current_epoch_index != 0) {
+        if (current_epoch_index % 10000 == 0 and current_epoch_index != 0) {
             try graphNeuralNetwork(
                 "xor_graph.ppm",
                 XorDataPoint,
