@@ -1,7 +1,6 @@
 const std = @import("std");
 const shuffle = @import("zshuffle").shuffle;
 const neural_networks = @import("neural_networks/neural_networks.zig");
-const LayerOutputData = @import("neural_networks/layer.zig").LayerOutputData;
 const graphNeuralNetwork = @import("graph_visualization/graph_neural_network.zig").graphNeuralNetwork;
 
 const TRAINING_EPOCHS = 2000;
@@ -193,7 +192,7 @@ pub fn main() !void {
     ) : (current_epoch_index += 1) {
         // We assume the data is already shuffled so we skip shuffling on the first
         // epoch. Using a pre-shuffled dataset also gives us nice reproducible results
-        // during the first epoch when trying to debug things.
+        // during the first epoch when trying to debug things  (like gradient checking).
         var shuffled_training_data_points: []AnimalDataPoint = &animal_training_data_points;
         if (current_epoch_index > 0) {
             // Shuffle the data after each epoch

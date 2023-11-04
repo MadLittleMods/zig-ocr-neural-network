@@ -117,7 +117,7 @@ pub fn main() !void {
     ) : (current_epoch_index += 1) {
         // We assume the data is already shuffled so we skip shuffling on the first
         // epoch. Using a pre-shuffled dataset also gives us nice reproducible results
-        // during the first epoch when trying to debug things.
+        // during the first epoch when trying to debug things  (like gradient checking).
         var shuffled_training_data_points = training_data_points;
         if (current_epoch_index > 0) {
             // Shuffle the data after each epoch
