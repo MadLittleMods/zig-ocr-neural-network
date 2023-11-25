@@ -240,7 +240,7 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
         /// Check to make sure cost gradients for weights generated from backpropagation
         /// and biases match the estimated cost gradients which are easier to trust (less
         /// moving pieces). We check to make sure that the actual and esimated gradients
-        /// match or are a consistent multiple of each other. (TODO: Is a multiple of each other fine?)
+        /// match or are a consistent multiple of each other.
         fn sanityCheckCostGradients(
             self: *Self,
             training_data_batch: []const DataPointType,
@@ -440,7 +440,8 @@ pub fn NeuralNetwork(comptime DataPointType: type) type {
             // we nudge the weight just above 0, we would estimate some value when the
             // actual value is 0 (with ReLU(x), any x <= 0 will result in 0). Ideally,
             // we should have some leniency during the gradient check as it's expected
-            // that our estimated gradient will not match our actual gradient exactly.
+            // that our estimated gradient will not match our actual gradient exactly
+            // when we hit a kink.
             for (0..layer.num_output_nodes) |node_index| {
                 for (0..layer.num_input_nodes) |node_in_index| {
                     const weight_index = layer.getFlatWeightIndex(node_index, node_in_index);
