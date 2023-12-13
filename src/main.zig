@@ -112,9 +112,7 @@ pub fn main() !void {
     defer neural_network.deinit(allocator);
 
     var current_epoch_index: usize = 0;
-    while (true
-    // current_epoch_index < TRAINING_EPOCHS
-    ) : (current_epoch_index += 1) {
+    while (current_epoch_index < TRAINING_EPOCHS) : (current_epoch_index += 1) {
         // We assume the data is already shuffled so we skip shuffling on the first
         // epoch. Using a pre-shuffled dataset also gives us nice reproducible results
         // during the first epoch when trying to debug things  (like gradient checking).

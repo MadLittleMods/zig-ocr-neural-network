@@ -1,5 +1,10 @@
 # Basic OCR example using a neural network against the MNIST dataset
 
+> [!TIP]
+If you are looking for a more complete neural network library that you can
+> include in your project, I've created a library based on this project ->
+> https://github.com/MadLittleMods/zig-neural-networks
+
 A from scratch neural network implementation in Zig, trained against the MNIST dataset
 to recognize handwritten digits.
 
